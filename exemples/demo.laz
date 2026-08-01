@@ -1,0 +1,130 @@
+# ============================================================
+#  DEMO.LAZ — Toutes les fonctionnalités du langage LAZARUS
+# ============================================================
+
+vox("===== 1. Variables et calculs =====")
+laz a = 10
+laz b = 3
+vox("a + b =", a + b)
+vox("a - b =", a - b)
+vox("a * b =", a * b)
+vox("a / b =", arondi(a / b, 2))
+vox("a % b =", a % b)
+
+vox("")
+vox("===== 2. Conditions (kan / sinon) =====")
+laz age = 20
+kan age >= 18 {
+    vox("Majeur !")
+} sinon kan age >= 13 {
+    vox("Adolescent")
+} sinon {
+    vox("Enfant")
+}
+
+# Opérateurs logiques : et / ou / non
+laz soleil = vrai
+laz weekend = faux
+kan soleil et non weekend {
+    vox("Il fait beau mais on travaille...")
+}
+
+vox("")
+vox("===== 3. Boucle tanke (tant que) =====")
+laz compteur = 5
+tanke compteur > 0 {
+    vox("Décompte :", compteur)
+    compteur = compteur - 1
+}
+vox("Décollage !")
+
+vox("")
+vox("===== 4. Boucle pou ... dan (pour chaque) =====")
+pou i dan 1..5 {
+    vox("i vaut", i)
+}
+
+# kase (break) et swiv (continue)
+pou n dan 1..10 {
+    kan n % 2 == 0 {
+        swiv        # on saute les nombres pairs
+    }
+    kan n > 7 {
+        kase        # on arrête après 7
+    }
+    vox("Impair :", n)
+}
+
+vox("")
+vox("===== 5. Listes =====")
+laz fruits = ["mangue", "banane", "ananas"]
+vox("Ma liste :", fruits)
+vox("Taille :", taille(fruits))
+vox("Premier fruit :", fruits[0])
+
+ajoute(fruits, "papaye")
+vox("Après ajout :", fruits)
+
+fruits[1] = "orange"
+vox("Après modification :", fruits)
+
+pou fruit dan fruits {
+    vox("J'aime la/le", fruit)
+}
+
+laz nombres = [42, 7, 19, 3]
+vox("Triée :", tri(nombres))
+
+vox("")
+vox("===== 6. Fonctions (fonk / rend) =====")
+fonk carre(x) {
+    rend x * x
+}
+vox("Le carré de 7 est", carre(7))
+
+fonk saluer(nom, heure) {
+    kan heure < 18 {
+        rend "Bonjour " + nom + " !"
+    } sinon {
+        rend "Bonsoir " + nom + " !"
+    }
+}
+vox(saluer("Ladji", 21))
+
+# Récursivité : la factorielle
+fonk factorielle(n) {
+    kan n <= 1 {
+        rend 1
+    }
+    rend n * factorielle(n - 1)
+}
+vox("6! =", factorielle(6))
+
+# Fibonacci
+fonk fibo(n) {
+    kan n <= 1 {
+        rend n
+    }
+    rend fibo(n - 1) + fibo(n - 2)
+}
+laz suite = []
+pou i dan 0..10 {
+    ajoute(suite, fibo(i))
+}
+vox("Fibonacci :", suite)
+
+vox("")
+vox("===== 7. Textes =====")
+laz phrase = "lazarus est mon langage"
+vox(majus(phrase))
+vox("Longueur :", taille(phrase))
+laz mots = koupe(phrase, " ")
+vox("Mots :", mots)
+vox("Nombre de mots :", taille(mots))
+
+vox("")
+vox("===== 8. Types (tip) =====")
+vox(tip(42), "/", tip("salut"), "/", tip(vrai), "/", tip([1, 2]), "/", tip(walu))
+
+vox("")
+vox("Démo terminée. LAZARUS fonctionne parfaitement !")

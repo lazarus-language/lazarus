@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lazarus-lang"
+version = "1.0.0"
+description = "LAZARUS — le langage de programmation de Ladji : accolades comme Java, simplicité de Python, mots-clés uniques (laz, fonk, kan, tanke...)"
+readme = "README.md"
+authors = [{ name = "Ladji Doucaré" }]
+license = { text = "MIT" }
+requires-python = ">=3.8"
+keywords = ["langage", "programmation", "interpreteur", "lazarus", "education", "francais"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Interpreters",
+    "Intended Audience :: Education",
+    "Natural Language :: French",
+]
+
+[project.urls]
+Homepage = "https://github.com/VOTRE_PSEUDO/lazarus"
+Documentation = "https://github.com/VOTRE_PSEUDO/lazarus/blob/main/GUIDE_LAZARUS.md"
+
+[project.scripts]
+lazarus = "lazarus:main"
+
+[tool.setuptools]
+py-modules = ["lazarus"]

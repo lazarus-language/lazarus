@@ -1,0 +1,27 @@
+# ============================================
+#  JEU : Devine le nombre !
+#  L'ordinateur choisit un nombre entre 1 et 100,
+#  à toi de le deviner.
+# ============================================
+
+vox("=== DEVINE LE NOMBRE ===")
+vox("J'ai choisi un nombre entre 1 et 100. À toi de jouer !")
+
+laz secret = hasard(1, 100)
+laz trouve = faux
+laz essais = 0
+
+tanke non trouve {
+    laz reponse = demand("Ton essai : ")
+    laz nb = nombre(reponse)
+    essais = essais + 1
+
+    kan nb == secret {
+        trouve = vrai
+        vox("BRAVO ! Tu as trouvé en", essais, "essais !")
+    } sinon kan nb < secret {
+        vox("C'est plus grand !")
+    } sinon {
+        vox("C'est plus petit !")
+    }
+}

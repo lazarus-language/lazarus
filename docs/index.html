@@ -1,0 +1,1356 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LAZARUS — Le langage de programmation de Ladji</title>
+<meta name="description" content="LAZARUS : un langage de programmation à la syntaxe hybride Java + Python, avec des mots-clés uniques. Codez directement dans votre navigateur !">
+<style>
+  :root {
+    --bg: #0d1117;
+    --bg2: #161b22;
+    --bg3: #1c2330;
+    --border: #2d3648;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --gold: #f0b429;
+    --gold-dim: #b8860b;
+    --violet: #a78bfa;
+    --green: #4ade80;
+    --red: #f87171;
+    --blue: #60a5fa;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ---------- entête ---------- */
+  header {
+    padding: 14px 22px 12px;
+    background: linear-gradient(135deg, #161b22 0%, #1a1430 60%, #241a3d 100%);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .logo {
+    font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+    font-size: 1.65rem;
+    font-weight: 800;
+    letter-spacing: 3px;
+    background: linear-gradient(90deg, var(--gold), #ffd970, var(--gold));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .tagline { color: var(--muted); font-size: .88rem; }
+  .tagline b { color: var(--violet); }
+  .version {
+    margin-left: auto;
+    font-size: .75rem;
+    color: var(--gold);
+    border: 1px solid var(--gold-dim);
+    border-radius: 20px;
+    padding: 3px 10px;
+    white-space: nowrap;
+  }
+
+  /* ---------- barre d'outils ---------- */
+  .toolbar {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 10px 22px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  button, select {
+    font-family: inherit;
+    font-size: .9rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg3);
+    color: var(--text);
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  button:hover, select:hover { border-color: var(--gold-dim); }
+  .btn-run {
+    background: linear-gradient(135deg, #1a7f37, #2ea043);
+    border-color: #2ea043;
+    font-weight: 700;
+  }
+  .btn-run:hover { filter: brightness(1.15); }
+  .btn-stop { background: #6e2020; border-color: #a03030; display: none; }
+  .hint { color: var(--muted); font-size: .78rem; margin-left: auto; }
+
+  /* ---------- panneaux ---------- */
+  main {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    min-height: 0;
+  }
+  .pane { display: flex; flex-direction: column; min-height: 0; }
+  .pane-title {
+    padding: 8px 16px;
+    font-size: .78rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+  }
+  .editor-wrap { flex: 1; display: flex; min-height: 0; border-right: 1px solid var(--border); }
+  .linenos {
+    padding: 14px 8px 14px 14px;
+    text-align: right;
+    color: #4b5563;
+    user-select: none;
+    font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+    font-size: .95rem;
+    line-height: 1.55;
+    background: var(--bg);
+    overflow: hidden;
+    white-space: pre;
+  }
+  #editor {
+    flex: 1;
+    background: var(--bg);
+    color: var(--text);
+    border: none;
+    outline: none;
+    resize: none;
+    padding: 14px;
+    font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+    font-size: .95rem;
+    line-height: 1.55;
+    tab-size: 4;
+    white-space: pre;
+    overflow-wrap: normal;
+    overflow: auto;
+  }
+  #console {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px;
+    font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+    font-size: .92rem;
+    line-height: 1.55;
+    background: #0a0e14;
+  }
+  #console .out { white-space: pre-wrap; }
+  #console .err { color: var(--red); white-space: pre-wrap; }
+  #console .sys { color: var(--muted); font-style: italic; }
+  #console .in-echo { color: var(--blue); }
+  .inline-input {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .inline-input input {
+    background: var(--bg3);
+    border: 1px solid var(--gold-dim);
+    border-radius: 6px;
+    color: var(--gold);
+    font-family: inherit;
+    font-size: .92rem;
+    padding: 3px 8px;
+    outline: none;
+    min-width: 160px;
+  }
+
+  /* ---------- aide-mémoire ---------- */
+  .cheatsheet {
+    border-top: 1px solid var(--border);
+    background: var(--bg2);
+    padding: 10px 22px 18px;
+    max-height: 40vh;
+    overflow-y: auto;
+  }
+  .cheatsheet summary {
+    cursor: pointer;
+    color: var(--gold);
+    font-weight: 600;
+    padding: 6px 0;
+    user-select: none;
+  }
+  .cheat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 14px;
+    margin-top: 12px;
+  }
+  .cheat-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .cheat-card h3 { font-size: .85rem; color: var(--violet); margin-bottom: 8px; }
+  .cheat-card pre {
+    font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+    font-size: .8rem;
+    color: #c9d1d9;
+    white-space: pre-wrap;
+  }
+  .cheat-card .kw { color: var(--gold); }
+
+  footer {
+    padding: 10px 22px;
+    text-align: center;
+    color: var(--muted);
+    font-size: .78rem;
+    background: var(--bg2);
+    border-top: 1px solid var(--border);
+  }
+  footer b { color: var(--gold); }
+
+  @media (max-width: 820px) {
+    main { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
+    .editor-wrap { border-right: none; border-bottom: 1px solid var(--border); }
+    .hint { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">⚡ LAZARUS</div>
+  <div class="tagline">Le langage de programmation créé par <b>Ladji</b> — accolades comme Java, simplicité de Python, mots-clés uniques.</div>
+  <div class="version">v1.0</div>
+</header>
+
+<div class="toolbar">
+  <button class="btn-run" id="btnRun">▶ Exécuter</button>
+  <button class="btn-stop" id="btnStop">⏹ Arrêter</button>
+  <select id="examples">
+    <option value="">📚 Charger un exemple...</option>
+    <option value="bonjour">Bonjour le monde</option>
+    <option value="demo">Démo complète du langage</option>
+    <option value="jeu">Jeu : devine le nombre</option>
+    <option value="calc">Calculatrice</option>
+    <option value="etoiles">Pyramide d'étoiles</option>
+  </select>
+  <button id="btnClear">🗑 Effacer la console</button>
+  <span class="hint">Astuce : Ctrl + Entrée pour exécuter</span>
+</div>
+
+<main>
+  <div class="pane">
+    <div class="pane-title">✍️ Ton code LAZARUS</div>
+    <div class="editor-wrap">
+      <div class="linenos" id="linenos">1</div>
+      <textarea id="editor" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
+    </div>
+  </div>
+  <div class="pane">
+    <div class="pane-title">🖥️ Console</div>
+    <div id="console"></div>
+  </div>
+</main>
+
+<details class="cheatsheet">
+  <summary>📖 Aide-mémoire LAZARUS — clique pour ouvrir</summary>
+  <div class="cheat-grid">
+    <div class="cheat-card">
+      <h3>Variables &amp; affichage</h3>
+      <pre><span class="kw">laz</span> nom = "Ladji"
+<span class="kw">laz</span> age = 25
+age = age + 1
+<span class="kw">vox</span>("Salut", nom)
+<span class="kw">laz</span> x = nombre(demand("Un nombre ? "))</pre>
+    </div>
+    <div class="cheat-card">
+      <h3>Conditions</h3>
+      <pre><span class="kw">kan</span> age >= 18 {
+    vox("Majeur")
+} <span class="kw">sinon kan</span> age >= 13 {
+    vox("Ado")
+} <span class="kw">sinon</span> {
+    vox("Enfant")
+}
+# logique : et / ou / non</pre>
+    </div>
+    <div class="cheat-card">
+      <h3>Boucles</h3>
+      <pre><span class="kw">tanke</span> x > 0 {
+    x = x - 1
+}
+<span class="kw">pou</span> i <span class="kw">dan</span> 1..10 {
+    vox(i)
+}
+# kase = break, swiv = continue</pre>
+    </div>
+    <div class="cheat-card">
+      <h3>Fonctions</h3>
+      <pre><span class="kw">fonk</span> carre(x) {
+    <span class="kw">rend</span> x * x
+}
+vox(carre(8))</pre>
+    </div>
+    <div class="cheat-card">
+      <h3>Listes</h3>
+      <pre><span class="kw">laz</span> l = [1, 2, 3]
+vox(l[0], taille(l))
+ajoute(l, 4)
+l[1] = 99
+vox(tri(l))</pre>
+    </div>
+    <div class="cheat-card">
+      <h3>Fonctions intégrées</h3>
+      <pre>vox demand nombre texte
+taille ajoute retire hasard
+arondi majus minus koupe
+tri tip
+# valeurs : vrai faux walu</pre>
+    </div>
+  </div>
+</details>
+
+<footer>
+  <b>LAZARUS v1.0</b> — créé par Ladji · Un langage libre et gratuit, pour tout le monde · Fichiers .laz
+</footer>
+
+<script>
+/* ============================================================
+   LAZARUS v1.0 — Moteur JavaScript (port du lazarus.py)
+   Créé par Ladji — fonctionne dans tout navigateur.
+   API :
+     Lazarus.run(source, { onPrint(texte), onInput(prompt) -> Promise<string>, shouldStop() -> bool })
+   ============================================================ */
+'use strict';
+
+const Lazarus = (function () {
+
+  // ---------------- ERREURS ----------------
+  class LazError extends Error {
+    constructor(message, line) {
+      super(message);
+      this.lazMessage = message;
+      this.line = line;
+    }
+    toString() {
+      if (this.line) return `✘ Erreur LAZARUS (ligne ${this.line}) : ${this.lazMessage}`;
+      return `✘ Erreur LAZARUS : ${this.lazMessage}`;
+    }
+  }
+  class ReturnEx { constructor(value) { this.value = value; } }
+  class BreakEx { }
+  class ContinueEx { }
+  class StopEx { }
+
+  // ---------------- LEXER ----------------
+  const KEYWORDS = new Set(['laz', 'fonk', 'rend', 'kan', 'sinon', 'tanke', 'pou', 'dan',
+    'vrai', 'faux', 'walu', 'et', 'ou', 'non', 'kase', 'swiv']);
+  const TWO_CHAR = new Set(['==', '!=', '<=', '>=', '&&', '||', '..']);
+  const ONE_CHAR = new Set(['+', '-', '*', '/', '%', '<', '>', '=', '(', ')',
+    '{', '}', '[', ']', ',', '!', ';']);
+
+  function isDigit(c) { return c >= '0' && c <= '9'; }
+  function isAlpha(c) { return /[\p{L}_]/u.test(c); }
+  function isAlnum(c) { return /[\p{L}\p{N}_]/u.test(c); }
+
+  function tokenize(source) {
+    const tokens = [];
+    let i = 0, line = 1, parenDepth = 0;
+    const n = source.length;
+
+    while (i < n) {
+      const c = source[i];
+
+      if (c === ' ' || c === '\t' || c === '\r') { i++; continue; }
+
+      if (c === '\n') {
+        if (parenDepth === 0) tokens.push(['NEWLINE', null, line]);
+        line++; i++; continue;
+      }
+
+      if (c === '#' || (c === '/' && source[i + 1] === '/')) {
+        while (i < n && source[i] !== '\n') i++;
+        continue;
+      }
+
+      if (c === '"') {
+        i++;
+        const startLine = line;
+        let buf = '';
+        while (i < n && source[i] !== '"') {
+          const ch = source[i];
+          if (ch === '\n') throw new LazError('chaîne de caractères non fermée (il manque un ")', startLine);
+          if (ch === '\\' && i + 1 < n) {
+            const nxt = source[i + 1];
+            const esc = { n: '\n', t: '\t', '"': '"', '\\': '\\' };
+            buf += (esc[nxt] !== undefined ? esc[nxt] : nxt);
+            i += 2;
+          } else { buf += ch; i++; }
+        }
+        if (i >= n) throw new LazError('chaîne de caractères non fermée (il manque un ")', startLine);
+        i++;
+        tokens.push(['STRING', buf, startLine]);
+        continue;
+      }
+
+      if (isDigit(c)) {
+        const start = i;
+        while (i < n && isDigit(source[i])) i++;
+        if (i < n && source[i] === '.' && isDigit(source[i + 1])) {
+          i++;
+          while (i < n && isDigit(source[i])) i++;
+        }
+        tokens.push(['NUMBER', parseFloat(source.slice(start, i)), line]);
+        continue;
+      }
+
+      if (isAlpha(c)) {
+        const start = i;
+        while (i < n && isAlnum(source[i])) i++;
+        const word = source.slice(start, i);
+        if (KEYWORDS.has(word)) tokens.push([word.toUpperCase(), word, line]);
+        else tokens.push(['IDENT', word, line]);
+        continue;
+      }
+
+      const two = source.slice(i, i + 2);
+      if (TWO_CHAR.has(two)) { tokens.push(['OP', two, line]); i += 2; continue; }
+
+      if (ONE_CHAR.has(c)) {
+        if (c === '(' || c === '[') parenDepth++;
+        else if (c === ')' || c === ']') parenDepth = Math.max(0, parenDepth - 1);
+        if (c === ';') tokens.push(['NEWLINE', null, line]);
+        else tokens.push(['OP', c, line]);
+        i++; continue;
+      }
+
+      throw new LazError(`caractère inconnu : '${c}'`, line);
+    }
+    tokens.push(['NEWLINE', null, line]);
+    tokens.push(['EOF', null, line]);
+    return tokens;
+  }
+
+  // ---------------- PARSER ----------------
+  const NICE = { NEWLINE: 'une fin de ligne', EOF: 'la fin du fichier' };
+
+  class Parser {
+    constructor(tokens) { this.tokens = tokens; this.pos = 0; }
+    peek() { return this.tokens[this.pos]; }
+    next() { return this.tokens[this.pos++]; }
+    check(t, v) {
+      const tok = this.peek();
+      if (tok[0] !== t) return false;
+      if (v !== undefined && tok[1] !== v) return false;
+      return true;
+    }
+    accept(t, v) { if (this.check(t, v)) return this.next(); return null; }
+    expect(t, v, what) {
+      const tok = this.peek();
+      if (!this.check(t, v)) {
+        const attendu = what || v || t;
+        let trouve = tok[1] !== null ? tok[1] : tok[0];
+        trouve = NICE[trouve] || trouve;
+        throw new LazError(`j'attendais « ${attendu} » mais j'ai trouvé « ${trouve} »`, tok[2]);
+      }
+      return this.next();
+    }
+    skipNewlines() { while (this.check('NEWLINE')) this.next(); }
+
+    parseProgram() {
+      const stmts = [];
+      this.skipNewlines();
+      while (!this.check('EOF')) {
+        stmts.push(this.parseStatement());
+        this.skipNewlines();
+      }
+      return ['block', stmts];
+    }
+
+    parseBlock() {
+      this.skipNewlines();
+      this.expect('OP', '{', '{');
+      const stmts = [];
+      this.skipNewlines();
+      while (!this.check('OP', '}')) {
+        if (this.check('EOF')) throw new LazError('il manque une accolade fermante }', this.peek()[2]);
+        stmts.push(this.parseStatement());
+        this.skipNewlines();
+      }
+      this.expect('OP', '}', '}');
+      return ['block', stmts];
+    }
+
+    parseStatement() {
+      const tok = this.peek();
+      const line = tok[2];
+
+      if (this.accept('LAZ')) {
+        const name = this.expect('IDENT', undefined, 'un nom de variable')[1];
+        this.expect('OP', '=', '=');
+        return ['declare', name, this.parseExpression(), line];
+      }
+      if (this.accept('FONK')) {
+        const name = this.expect('IDENT', undefined, 'un nom de fonction')[1];
+        this.expect('OP', '(', '(');
+        const params = [];
+        if (!this.check('OP', ')')) {
+          params.push(this.expect('IDENT', undefined, 'un paramètre')[1]);
+          while (this.accept('OP', ',')) params.push(this.expect('IDENT', undefined, 'un paramètre')[1]);
+        }
+        this.expect('OP', ')', ')');
+        return ['fonk', name, params, this.parseBlock(), line];
+      }
+      if (this.accept('KAN')) return this.parseKan(line);
+      if (this.accept('TANKE')) {
+        const cond = this.parseExpression();
+        return ['tanke', cond, this.parseBlock(), line];
+      }
+      if (this.accept('POU')) {
+        const v = this.expect('IDENT', undefined, 'un nom de variable')[1];
+        this.expect('DAN', undefined, 'dan');
+        const iterable = this.parseExpression();
+        return ['pou', v, iterable, this.parseBlock(), line];
+      }
+      if (this.accept('REND')) {
+        if (this.check('NEWLINE') || this.check('OP', '}') || this.check('EOF')) return ['rend', null, line];
+        return ['rend', this.parseExpression(), line];
+      }
+      if (this.accept('KASE')) return ['kase', line];
+      if (this.accept('SWIV')) return ['swiv', line];
+
+      const expr = this.parseExpression();
+      if (this.check('OP', '=')) {
+        this.next();
+        const value = this.parseExpression();
+        if (expr[0] === 'var') return ['assign', expr[1], value, line];
+        if (expr[0] === 'index') return ['assign_index', expr[1], expr[2], value, line];
+        throw new LazError("on ne peut affecter une valeur qu'à une variable ou à un élément de liste", line);
+      }
+      return ['expr', expr, line];
+    }
+
+    parseKan(line) {
+      const cond = this.parseExpression();
+      const body = this.parseBlock();
+      let elseBranch = null;
+      const save = this.pos;
+      this.skipNewlines();
+      if (this.accept('SINON')) {
+        if (this.accept('KAN')) elseBranch = ['block', [this.parseKan(this.peek()[2])]];
+        else elseBranch = this.parseBlock();
+      } else {
+        this.pos = save;
+      }
+      return ['kan', cond, body, elseBranch, line];
+    }
+
+    parseExpression() { return this.parseOr(); }
+
+    parseOr() {
+      let left = this.parseAnd();
+      for (;;) {
+        if (this.accept('OU') || this.accept('OP', '||')) left = ['or', left, this.parseAnd()];
+        else break;
+      }
+      return left;
+    }
+    parseAnd() {
+      let left = this.parseNot();
+      for (;;) {
+        if (this.accept('ET') || this.accept('OP', '&&')) left = ['and', left, this.parseNot()];
+        else break;
+      }
+      return left;
+    }
+    parseNot() {
+      if (this.accept('NON') || this.accept('OP', '!')) return ['not', this.parseNot()];
+      return this.parseComparison();
+    }
+    parseComparison() {
+      const left = this.parseRange();
+      const tok = this.peek();
+      if (tok[0] === 'OP' && ['==', '!=', '<', '>', '<=', '>='].includes(tok[1])) {
+        const op = this.next()[1];
+        return ['cmp', op, left, this.parseRange(), tok[2]];
+      }
+      return left;
+    }
+    parseRange() {
+      const left = this.parseAdditive();
+      const tok = this.peek();
+      if (tok[0] === 'OP' && tok[1] === '..') {
+        this.next();
+        return ['range', left, this.parseAdditive(), tok[2]];
+      }
+      return left;
+    }
+    parseAdditive() {
+      let left = this.parseTerm();
+      for (;;) {
+        const tok = this.peek();
+        if (tok[0] === 'OP' && (tok[1] === '+' || tok[1] === '-')) {
+          const op = this.next()[1];
+          left = ['binop', op, left, this.parseTerm(), tok[2]];
+        } else break;
+      }
+      return left;
+    }
+    parseTerm() {
+      let left = this.parseUnary();
+      for (;;) {
+        const tok = this.peek();
+        if (tok[0] === 'OP' && ['*', '/', '%'].includes(tok[1])) {
+          const op = this.next()[1];
+          left = ['binop', op, left, this.parseUnary(), tok[2]];
+        } else break;
+      }
+      return left;
+    }
+    parseUnary() {
+      const tok = this.peek();
+      if (tok[0] === 'OP' && tok[1] === '-') {
+        this.next();
+        return ['neg', this.parseUnary(), tok[2]];
+      }
+      return this.parsePostfix();
+    }
+    parsePostfix() {
+      let expr = this.parsePrimary();
+      for (;;) {
+        const tok = this.peek();
+        if (tok[0] === 'OP' && tok[1] === '(') {
+          this.next();
+          const args = [];
+          if (!this.check('OP', ')')) {
+            args.push(this.parseExpression());
+            while (this.accept('OP', ',')) args.push(this.parseExpression());
+          }
+          this.expect('OP', ')', ')');
+          expr = ['call', expr, args, tok[2]];
+        } else if (tok[0] === 'OP' && tok[1] === '[') {
+          this.next();
+          const index = this.parseExpression();
+          this.expect('OP', ']', ']');
+          expr = ['index', expr, index, tok[2]];
+        } else break;
+      }
+      return expr;
+    }
+    parsePrimary() {
+      const tok = this.peek();
+      if (tok[0] === 'NUMBER') { this.next(); return ['num', tok[1]]; }
+      if (tok[0] === 'STRING') { this.next(); return ['str', tok[1]]; }
+      if (tok[0] === 'VRAI') { this.next(); return ['bool', true]; }
+      if (tok[0] === 'FAUX') { this.next(); return ['bool', false]; }
+      if (tok[0] === 'WALU') { this.next(); return ['walu']; }
+      if (tok[0] === 'IDENT') { this.next(); return ['var', tok[1], tok[2]]; }
+      if (tok[0] === 'OP' && tok[1] === '(') {
+        this.next();
+        const expr = this.parseExpression();
+        this.expect('OP', ')', ')');
+        return expr;
+      }
+      if (tok[0] === 'OP' && tok[1] === '[') {
+        this.next();
+        const items = [];
+        this.skipNewlines();
+        if (!this.check('OP', ']')) {
+          items.push(this.parseExpression());
+          while (this.accept('OP', ',')) {
+            this.skipNewlines();
+            items.push(this.parseExpression());
+          }
+          this.skipNewlines();
+        }
+        this.expect('OP', ']', ']');
+        return ['list', items, tok[2]];
+      }
+      let trouve = tok[1] !== null ? tok[1] : tok[0];
+      trouve = NICE[trouve] || trouve;
+      throw new LazError(`expression invalide, je ne comprends pas « ${trouve} » (il manque peut-être une valeur)`, tok[2]);
+    }
+  }
+
+  // ---------------- ENVIRONNEMENT ----------------
+  class Env {
+    constructor(parent) { this.vars = new Map(); this.parent = parent || null; }
+    get(name, line) {
+      let e = this;
+      while (e) { if (e.vars.has(name)) return e.vars.get(name); e = e.parent; }
+      throw new LazError(`la variable « ${name} » n'existe pas (déclare-la avec : laz ${name} = ...)`, line);
+    }
+    declare(name, value) { this.vars.set(name, value); }
+    assign(name, value, line) {
+      let e = this;
+      while (e) { if (e.vars.has(name)) { e.vars.set(name, value); return; } e = e.parent; }
+      throw new LazError(`la variable « ${name} » n'existe pas (déclare-la avec : laz ${name} = ...)`, line);
+    }
+  }
+
+  class LazFunction {
+    constructor(name, params, body, env) {
+      this.name = name; this.params = params; this.body = body; this.env = env;
+    }
+  }
+
+  // ---------------- VALEURS ----------------
+  function numText(v) {
+    if (Number.isInteger(v)) return String(v);
+    return String(Math.round(v * 1e10) / 1e10);
+  }
+  function toText(v) {
+    if (v === null || v === undefined) return 'walu';
+    if (v === true) return 'vrai';
+    if (v === false) return 'faux';
+    if (typeof v === 'number') return numText(v);
+    if (Array.isArray(v)) {
+      return '[' + v.map(x => typeof x === 'string' ? `"${x}"` : toText(x)).join(', ') + ']';
+    }
+    if (v instanceof LazFunction) return `<fonk ${v.name}>`;
+    return String(v);
+  }
+  function isTruthy(v) {
+    if (v === null || v === undefined || v === false) return false;
+    if (v === true) return true;
+    if (typeof v === 'number') return v !== 0;
+    if (typeof v === 'string' || Array.isArray(v)) return v.length > 0;
+    return true;
+  }
+  function checkNumber(v, line, contexte) {
+    if (typeof v !== 'number' || Number.isNaN(v)) {
+      throw new LazError(`${(contexte || 'cette opération')} demande un nombre, pas « ${toText(v)} »`, line);
+    }
+    return v;
+  }
+
+  // ---------------- INTERPRÉTEUR ----------------
+  const MAX_STEPS = 5000000;
+
+  class Interpreter {
+    constructor(io) {
+      this.io = io;
+      this.globals = new Env(null);
+      this.steps = 0;
+      this.makeBuiltins();
+    }
+
+    tick(line) {
+      this.steps++;
+      if (this.steps > MAX_STEPS) {
+        throw new LazError('programme trop long — boucle infinie ?', line);
+      }
+      if (this.io.shouldStop && this.io.shouldStop()) throw new StopEx();
+    }
+
+    need(args, count, name, line) {
+      if (args.length < count) {
+        throw new LazError(`${name}() demande au moins ${count} argument(s), reçu ${args.length}`, line);
+      }
+    }
+
+    makeBuiltins() {
+      const g = this.globals;
+      const self = this;
+      const B = (name, fn) => g.declare(name, { builtin: name, fn });
+
+      B('vox', async (args) => { self.io.onPrint(args.map(toText).join(' ')); return null; });
+      B('demand', async (args) => {
+        const p = args.length ? toText(args[0]) : '';
+        const answer = await self.io.onInput(p);
+        return answer === null || answer === undefined ? '' : String(answer);
+      });
+      B('nombre', async (args, line) => {
+        self.need(args, 1, 'nombre', line);
+        const v = args[0];
+        if (v === true) return 1;
+        if (v === false) return 0;
+        if (typeof v === 'number') return v;
+        const f = parseFloat(String(v).trim().replace(',', '.'));
+        if (Number.isNaN(f) || !/^-?[\d.,]+$/.test(String(v).trim())) {
+          throw new LazError(`impossible de convertir « ${toText(v)} » en nombre`, line);
+        }
+        return f;
+      });
+      B('texte', async (args, line) => { self.need(args, 1, 'texte', line); return toText(args[0]); });
+      B('taille', async (args, line) => {
+        self.need(args, 1, 'taille', line);
+        const v = args[0];
+        if (typeof v === 'string' || Array.isArray(v)) return v.length;
+        throw new LazError('taille() fonctionne avec un texte ou une liste', line);
+      });
+      B('ajoute', async (args, line) => {
+        self.need(args, 2, 'ajoute', line);
+        if (!Array.isArray(args[0])) throw new LazError('ajoute() demande une liste en premier argument', line);
+        args[0].push(args[1]);
+        return args[0];
+      });
+      B('retire', async (args, line) => {
+        self.need(args, 2, 'retire', line);
+        const lst = args[0];
+        if (!Array.isArray(lst)) throw new LazError('retire() demande une liste en premier argument', line);
+        let idx = Math.trunc(checkNumber(args[1], line, 'retire()'));
+        if (idx < -lst.length || idx >= lst.length) {
+          throw new LazError(`position ${idx} hors de la liste (taille ${lst.length})`, line);
+        }
+        if (idx < 0) idx += lst.length;
+        return lst.splice(idx, 1)[0];
+      });
+      B('hasard', async (args, line) => {
+        self.need(args, 2, 'hasard', line);
+        const a = Math.trunc(checkNumber(args[0], line, 'hasard()'));
+        const b = Math.trunc(checkNumber(args[1], line, 'hasard()'));
+        const lo = Math.min(a, b), hi = Math.max(a, b);
+        return lo + Math.floor(Math.random() * (hi - lo + 1));
+      });
+      B('arondi', async (args, line) => {
+        self.need(args, 1, 'arondi', line);
+        const v = checkNumber(args[0], line, 'arondi()');
+        const nd = args.length > 1 ? Math.trunc(checkNumber(args[1], line, 'arondi()')) : 0;
+        const m = Math.pow(10, nd);
+        return Math.round(v * m) / m;
+      });
+      B('majus', async (args, line) => { self.need(args, 1, 'majus', line); return toText(args[0]).toUpperCase(); });
+      B('minus', async (args, line) => { self.need(args, 1, 'minus', line); return toText(args[0]).toLowerCase(); });
+      B('koupe', async (args, line) => { self.need(args, 2, 'koupe', line); return toText(args[0]).split(toText(args[1])); });
+      B('tri', async (args, line) => {
+        self.need(args, 1, 'tri', line);
+        if (!Array.isArray(args[0])) throw new LazError('tri() demande une liste', line);
+        const arr = args[0];
+        const allNum = arr.every(x => typeof x === 'number');
+        const allStr = arr.every(x => typeof x === 'string');
+        if (!allNum && !allStr && arr.length > 0) {
+          throw new LazError('tri() ne peut pas trier des types mélangés', line);
+        }
+        const copy = arr.slice();
+        if (allNum) copy.sort((a, b) => a - b);
+        else copy.sort();
+        return copy;
+      });
+      B('tip', async (args, line) => {
+        self.need(args, 1, 'tip', line);
+        const v = args[0];
+        if (v === null || v === undefined) return 'walu';
+        if (v === true || v === false) return 'buli';
+        if (typeof v === 'number') return 'nombre';
+        if (typeof v === 'string') return 'texte';
+        if (Array.isArray(v)) return 'liste';
+        if (v instanceof LazFunction) return 'fonk';
+        return 'inconnu';
+      });
+    }
+
+    async run(source) {
+      const tokens = tokenize(source);
+      const ast = new Parser(tokens).parseProgram();
+      return await this.execBlock(ast, this.globals);
+    }
+
+    async execBlock(block, env) {
+      let result = null;
+      for (const stmt of block[1]) result = await this.execStmt(stmt, env);
+      return result;
+    }
+
+    async execStmt(stmt, env) {
+      const kind = stmt[0];
+      this.tick(stmt[stmt.length - 1]);
+      // laisser le navigateur respirer (bouton Arrêter, affichage) sur les gros programmes
+      if ((this.steps & 8191) === 0 && this.io.onYield) await this.io.onYield();
+
+      if (kind === 'declare') {
+        env.declare(stmt[1], await this.eval(stmt[2], env));
+        return null;
+      }
+      if (kind === 'assign') {
+        env.assign(stmt[1], await this.eval(stmt[2], env), stmt[3]);
+        return null;
+      }
+      if (kind === 'assign_index') {
+        const [, targetNode, indexNode, valueNode, line] = stmt;
+        const target = await this.eval(targetNode, env);
+        const index = await this.eval(indexNode, env);
+        const value = await this.eval(valueNode, env);
+        if (!Array.isArray(target)) throw new LazError('on ne peut modifier par position que les listes', line);
+        let idx = Math.trunc(checkNumber(index, line, "l'indexation"));
+        if (idx < -target.length || idx >= target.length) {
+          throw new LazError(`position ${idx} hors de la liste (taille ${target.length})`, line);
+        }
+        if (idx < 0) idx += target.length;
+        target[idx] = value;
+        return null;
+      }
+      if (kind === 'fonk') {
+        env.declare(stmt[1], new LazFunction(stmt[1], stmt[2], stmt[3], env));
+        return null;
+      }
+      if (kind === 'kan') {
+        const [, cond, body, elseBranch] = stmt;
+        if (isTruthy(await this.eval(cond, env))) await this.execBlock(body, env);
+        else if (elseBranch) await this.execBlock(elseBranch, env);
+        return null;
+      }
+      if (kind === 'tanke') {
+        const [, cond, body, line] = stmt;
+        while (isTruthy(await this.eval(cond, env))) {
+          this.tick(line);
+          try { await this.execBlock(body, env); }
+          catch (e) {
+            if (e instanceof BreakEx) break;
+            if (e instanceof ContinueEx) continue;
+            throw e;
+          }
+        }
+        return null;
+      }
+      if (kind === 'pou') {
+        const [, varName, iterableNode, body, line] = stmt;
+        let iterable = await this.eval(iterableNode, env);
+        if (typeof iterable === 'string') iterable = iterable.split('');
+        if (!Array.isArray(iterable)) {
+          throw new LazError('« pou ... dan ... » demande une liste, un intervalle (1..10) ou un texte', line);
+        }
+        env.declare(varName, null);
+        for (const item of iterable) {
+          this.tick(line);
+          env.vars.set(varName, item);
+          try { await this.execBlock(body, env); }
+          catch (e) {
+            if (e instanceof BreakEx) break;
+            if (e instanceof ContinueEx) continue;
+            throw e;
+          }
+        }
+        return null;
+      }
+      if (kind === 'rend') {
+        const value = stmt[1] !== null ? await this.eval(stmt[1], env) : null;
+        throw new ReturnEx(value);
+      }
+      if (kind === 'kase') throw new BreakEx();
+      if (kind === 'swiv') throw new ContinueEx();
+      if (kind === 'expr') return await this.eval(stmt[1], env);
+
+      throw new LazError(`instruction inconnue : ${kind}`);
+    }
+
+    async eval(node, env) {
+      const kind = node[0];
+      this.tick();
+
+      if (kind === 'num' || kind === 'str' || kind === 'bool') return node[1];
+      if (kind === 'walu') return null;
+      if (kind === 'var') return env.get(node[1], node[2]);
+      if (kind === 'list') {
+        const out = [];
+        for (const item of node[1]) out.push(await this.eval(item, env));
+        return out;
+      }
+      if (kind === 'range') {
+        const [, startNode, endNode, line] = node;
+        const start = Math.trunc(checkNumber(await this.eval(startNode, env), line, "l'intervalle .."));
+        const end = Math.trunc(checkNumber(await this.eval(endNode, env), line, "l'intervalle .."));
+        const step = end >= start ? 1 : -1;
+        const out = [];
+        for (let v = start; step > 0 ? v <= end : v >= end; v += step) {
+          out.push(v);
+          if (out.length > 1000000) throw new LazError('intervalle trop grand (plus d\'un million d\'éléments)', line);
+        }
+        return out;
+      }
+      if (kind === 'or') {
+        const left = await this.eval(node[1], env);
+        if (isTruthy(left)) return left;
+        return await this.eval(node[2], env);
+      }
+      if (kind === 'and') {
+        const left = await this.eval(node[1], env);
+        if (!isTruthy(left)) return left;
+        return await this.eval(node[2], env);
+      }
+      if (kind === 'not') return !isTruthy(await this.eval(node[1], env));
+      if (kind === 'neg') {
+        return -checkNumber(await this.eval(node[1], env), node[2], 'le signe -');
+      }
+      if (kind === 'cmp') {
+        const [, op, leftNode, rightNode, line] = node;
+        const left = await this.eval(leftNode, env);
+        const right = await this.eval(rightNode, env);
+        if (op === '==') return lazEquals(left, right);
+        if (op === '!=') return !lazEquals(left, right);
+        if (!(typeof left === 'string' && typeof right === 'string')) {
+          checkNumber(left, line, `la comparaison ${op}`);
+          checkNumber(right, line, `la comparaison ${op}`);
+        }
+        if (op === '<') return left < right;
+        if (op === '>') return left > right;
+        if (op === '<=') return left <= right;
+        if (op === '>=') return left >= right;
+      }
+      if (kind === 'binop') {
+        const [, op, leftNode, rightNode, line] = node;
+        const left = await this.eval(leftNode, env);
+        const right = await this.eval(rightNode, env);
+        if (op === '+') {
+          if (typeof left === 'string' || typeof right === 'string') return toText(left) + toText(right);
+          if (Array.isArray(left) && Array.isArray(right)) return left.concat(right);
+          checkNumber(left, line, "l'addition +");
+          checkNumber(right, line, "l'addition +");
+          return left + right;
+        }
+        checkNumber(left, line, `l'opération ${op}`);
+        checkNumber(right, line, `l'opération ${op}`);
+        if (op === '-') return left - right;
+        if (op === '*') return left * right;
+        if (op === '/') {
+          if (right === 0) throw new LazError('division par zéro impossible', line);
+          return left / right;
+        }
+        if (op === '%') {
+          if (right === 0) throw new LazError('modulo par zéro impossible', line);
+          // modulo « à la Python » : toujours du signe du diviseur
+          return ((left % right) + right) % right;
+        }
+      }
+      if (kind === 'index') {
+        const [, targetNode, indexNode, line] = node;
+        const target = await this.eval(targetNode, env);
+        const index = await this.eval(indexNode, env);
+        if (!(Array.isArray(target) || typeof target === 'string')) {
+          throw new LazError('on ne peut indexer que les listes et les textes', line);
+        }
+        let idx = Math.trunc(checkNumber(index, line, "l'indexation"));
+        if (idx < -target.length || idx >= target.length) {
+          throw new LazError(`position ${idx} hors limites (taille ${target.length})`, line);
+        }
+        if (idx < 0) idx += target.length;
+        return target[idx];
+      }
+      if (kind === 'call') {
+        const [, calleeNode, argNodes, line] = node;
+        const callee = await this.eval(calleeNode, env);
+        const args = [];
+        for (const a of argNodes) args.push(await this.eval(a, env));
+
+        if (callee && callee.builtin) return await callee.fn(args, line);
+
+        if (callee instanceof LazFunction) {
+          if (args.length !== callee.params.length) {
+            throw new LazError(
+              `la fonction « ${callee.name} » attend ${callee.params.length} argument(s), reçu ${args.length}`, line);
+          }
+          const callEnv = new Env(callee.env);
+          for (let i = 0; i < args.length; i++) callEnv.declare(callee.params[i], args[i]);
+          try {
+            await this.execBlock(callee.body, callEnv);
+          } catch (e) {
+            if (e instanceof ReturnEx) return e.value;
+            throw e;
+          }
+          return null;
+        }
+        throw new LazError(`« ${toText(callee)} » n'est pas une fonction`, line);
+      }
+      throw new LazError(`expression inconnue : ${kind}`);
+    }
+  }
+
+  function lazEquals(a, b) {
+    if (Array.isArray(a) && Array.isArray(b)) {
+      if (a.length !== b.length) return false;
+      for (let i = 0; i < a.length; i++) if (!lazEquals(a[i], b[i])) return false;
+      return true;
+    }
+    return a === b;
+  }
+
+  // ---------------- API PUBLIQUE ----------------
+  async function run(source, io) {
+    const interp = new Interpreter(io || {
+      onPrint: (t) => console.log(t),
+      onInput: async () => '',
+      shouldStop: () => false,
+    });
+    try {
+      await interp.run(source);
+      return { ok: true };
+    } catch (e) {
+      if (e instanceof StopEx) return { ok: false, stopped: true };
+      if (e instanceof LazError) return { ok: false, error: e.toString() };
+      if (e instanceof ReturnEx) return { ok: true };
+      if (e instanceof BreakEx || e instanceof ContinueEx) {
+        return { ok: false, error: '✘ Erreur LAZARUS : « kase » et « swiv » ne s\'utilisent que dans une boucle' };
+      }
+      if (e instanceof RangeError) {
+        return { ok: false, error: '✘ Erreur LAZARUS : récursion trop profonde (boucle infinie ?)' };
+      }
+      return { ok: false, error: '✘ Erreur LAZARUS : ' + (e.message || String(e)) };
+    }
+  }
+
+  return { run, toText, LazError, version: '1.0' };
+})();
+
+if (typeof module !== 'undefined' && module.exports) module.exports = Lazarus;
+
+</script>
+
+<script>
+(function () {
+  const editor = document.getElementById('editor');
+  const linenos = document.getElementById('linenos');
+  const consoleEl = document.getElementById('console');
+  const btnRun = document.getElementById('btnRun');
+  const btnStop = document.getElementById('btnStop');
+  const btnClear = document.getElementById('btnClear');
+  const examples = document.getElementById('examples');
+
+  // ---------- exemples ----------
+  const EX = {};
+  EX.bonjour = `# Mon premier programme LAZARUS
+vox("Bonjour le monde !")
+
+laz nom = "Ladji"
+vox("Bienvenue, " + nom + " !")
+vox("LAZARUS est vivant !")
+`;
+  EX.demo = `# ===== Démo complète LAZARUS =====
+
+vox("--- Variables ---")
+laz a = 10
+laz b = 3
+vox("a + b =", a + b, "| a / b =", arondi(a / b, 2))
+
+vox("--- Conditions ---")
+laz age = 20
+kan age >= 18 {
+    vox("Majeur !")
+} sinon {
+    vox("Mineur")
+}
+
+vox("--- Boucles ---")
+pou i dan 1..5 {
+    vox("i vaut", i)
+}
+
+vox("--- Listes ---")
+laz fruits = ["mangue", "banane", "ananas"]
+ajoute(fruits, "papaye")
+pou f dan fruits {
+    vox("J'aime :", f)
+}
+
+vox("--- Fonctions ---")
+fonk factorielle(n) {
+    kan n <= 1 {
+        rend 1
+    }
+    rend n * factorielle(n - 1)
+}
+vox("6! =", factorielle(6))
+
+fonk fibo(n) {
+    kan n <= 1 {
+        rend n
+    }
+    rend fibo(n - 1) + fibo(n - 2)
+}
+laz suite = []
+pou i dan 0..10 {
+    ajoute(suite, fibo(i))
+}
+vox("Fibonacci :", suite)
+`;
+  EX.jeu = `# ===== Devine le nombre ! =====
+vox("J'ai choisi un nombre entre 1 et 100...")
+
+laz secret = hasard(1, 100)
+laz trouve = faux
+laz essais = 0
+
+tanke non trouve {
+    laz nb = nombre(demand("Ton essai : "))
+    essais = essais + 1
+
+    kan nb == secret {
+        trouve = vrai
+        vox("BRAVO ! Trouvé en", essais, "essais !")
+    } sinon kan nb < secret {
+        vox("C'est plus grand !")
+    } sinon {
+        vox("C'est plus petit !")
+    }
+}
+`;
+  EX.calc = `# ===== Calculatrice =====
+laz a = nombre(demand("Premier nombre : "))
+laz op = demand("Opération (+ - * /) : ")
+laz b = nombre(demand("Deuxième nombre : "))
+
+kan op == "+" {
+    vox("Résultat :", a + b)
+} sinon kan op == "-" {
+    vox("Résultat :", a - b)
+} sinon kan op == "*" {
+    vox("Résultat :", a * b)
+} sinon kan op == "/" {
+    kan b == 0 {
+        vox("Division par zéro interdite !")
+    } sinon {
+        vox("Résultat :", a / b)
+    }
+} sinon {
+    vox("Opération inconnue :", op)
+}
+`;
+  EX.etoiles = `# ===== Pyramide d'étoiles =====
+laz hauteur = 7
+
+pou ligne dan 1..hauteur {
+    laz texte_ligne = ""
+    pou e dan 1..(hauteur - ligne) {
+        texte_ligne = texte_ligne + " "
+    }
+    pou e dan 1..(ligne * 2 - 1) {
+        texte_ligne = texte_ligne + "★"
+    }
+    vox(texte_ligne)
+}
+vox("LAZARUS !")
+`;
+
+  editor.value = EX.bonjour;
+
+  examples.addEventListener('change', () => {
+    if (examples.value && EX[examples.value]) {
+      editor.value = EX[examples.value];
+      updateLinenos();
+    }
+    examples.selectedIndex = 0;
+  });
+
+  // ---------- numéros de ligne ----------
+  function updateLinenos() {
+    const count = editor.value.split('\n').length;
+    let s = '';
+    for (let i = 1; i <= count; i++) s += i + '\n';
+    linenos.textContent = s;
+  }
+  editor.addEventListener('input', updateLinenos);
+  editor.addEventListener('scroll', () => { linenos.scrollTop = editor.scrollTop; });
+  updateLinenos();
+
+  // tabulation = 4 espaces
+  editor.addEventListener('keydown', (e) => {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const s = editor.selectionStart, epos = editor.selectionEnd;
+      editor.value = editor.value.slice(0, s) + '    ' + editor.value.slice(epos);
+      editor.selectionStart = editor.selectionEnd = s + 4;
+      updateLinenos();
+    }
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      runProgram();
+    }
+  });
+
+  // ---------- console ----------
+  function addLine(text, cls) {
+    const div = document.createElement('div');
+    div.className = cls || 'out';
+    div.textContent = text;
+    consoleEl.appendChild(div);
+    consoleEl.scrollTop = consoleEl.scrollHeight;
+    return div;
+  }
+
+  function askInput(promptText) {
+    return new Promise((resolve) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'inline-input';
+      const label = document.createElement('span');
+      label.className = 'out';
+      label.textContent = promptText;
+      const input = document.createElement('input');
+      input.type = 'text';
+      wrap.appendChild(label);
+      wrap.appendChild(input);
+      consoleEl.appendChild(wrap);
+      consoleEl.scrollTop = consoleEl.scrollHeight;
+      input.focus();
+
+      const done = (value) => {
+        wrap.remove();
+        const echo = document.createElement('div');
+        echo.innerHTML = '';
+        const l = document.createElement('span');
+        l.className = 'out';
+        l.textContent = promptText;
+        const v = document.createElement('span');
+        v.className = 'in-echo';
+        v.textContent = value;
+        echo.appendChild(l);
+        echo.appendChild(v);
+        consoleEl.appendChild(echo);
+        resolve(value);
+      };
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') done(input.value);
+      });
+      currentInputCancel = () => done(input.value);
+    });
+  }
+
+  let running = false;
+  let stopFlag = false;
+  let currentInputCancel = null;
+
+  async function runProgram() {
+    if (running) return;
+    running = true;
+    stopFlag = false;
+    btnRun.style.display = 'none';
+    btnStop.style.display = 'inline-block';
+    addLine('▶ Exécution...', 'sys');
+
+    const io = {
+      onPrint: (t) => addLine(t, 'out'),
+      onInput: (p) => askInput(p),
+      shouldStop: () => stopFlag,
+      onYield: () => new Promise(r => setTimeout(r, 0)),
+    };
+
+    const result = await Lazarus.run(editor.value, io);
+
+    if (result.stopped) addLine('⏹ Programme arrêté.', 'sys');
+    else if (result.ok) addLine('✔ Terminé.', 'sys');
+    else addLine(result.error, 'err');
+
+    running = false;
+    btnRun.style.display = 'inline-block';
+    btnStop.style.display = 'none';
+  }
+
+  btnRun.addEventListener('click', runProgram);
+  btnStop.addEventListener('click', () => {
+    stopFlag = true;
+    if (currentInputCancel) { const c = currentInputCancel; currentInputCancel = null; c(); }
+  });
+  btnClear.addEventListener('click', () => { consoleEl.innerHTML = ''; });
+
+  addLine('Bienvenue dans LAZARUS ! Clique sur ▶ Exécuter, ou charge un exemple. ⚡', 'sys');
+})();
+</script>
+
+</body>
+</html>

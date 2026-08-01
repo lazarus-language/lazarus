@@ -1,0 +1,25 @@
+# ============================================
+#  Calculatrice LAZARUS
+# ============================================
+
+vox("=== CALCULATRICE LAZARUS ===")
+
+laz a = nombre(demand("Premier nombre : "))
+laz op = demand("Opération (+ - * /) : ")
+laz b = nombre(demand("Deuxième nombre : "))
+
+kan op == "+" {
+    vox("Résultat :", a + b)
+} sinon kan op == "-" {
+    vox("Résultat :", a - b)
+} sinon kan op == "*" {
+    vox("Résultat :", a * b)
+} sinon kan op == "/" {
+    kan b == 0 {
+        vox("Impossible de diviser par zéro !")
+    } sinon {
+        vox("Résultat :", a / b)
+    }
+} sinon {
+    vox("Opération inconnue :", op)
+}

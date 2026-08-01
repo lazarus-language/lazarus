@@ -1,0 +1,13 @@
+# ============================================
+#  Mon premier programme LAZARUS
+#  Pour l'exécuter : python3 lazarus.py exemples/bonjour.laz
+# ============================================
+
+vox("Bonjour le monde !")
+
+laz nom = "Ladji"
+laz annee = 2026
+
+vox("Je m'appelle " + nom)
+vox("Nous sommes en", annee)
+vox(nom, "a créé le langage LAZARUS !")
