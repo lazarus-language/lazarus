@@ -1,6 +1,6 @@
-# ⚡ LAZARUS
+# LAZARUS
 
-**Le langage de programmation créé par Ladji** — la structure de Java, la simplicité de Python, et des mots-clés uniques au monde.
+**Le langage de programmation créé par Ladji** — la structure de Java, la simplicité de Python, et des mots-clés uniques au monde. **Version 2.0** : classes, dictionnaires, modules et fichiers.
 
 *A programming language created by Ladji — Java's structure, Python's simplicity, and one-of-a-kind keywords. French-friendly error messages. See the [English section](#-english) below.*
 
@@ -18,7 +18,7 @@ pou i dan 1..3 {
 
 ## 🚀 Essayer tout de suite
 
-**Dans le navigateur, sans rien installer :** ouvrez le playground en ligne (dossier [`docs/`](docs/index.html) — hébergé avec GitHub Pages).
+**Dans le navigateur, sans rien installer :** 👉 **https://lazarus-language.github.io/lazarus/**
 
 **Sur votre machine :**
 
@@ -48,11 +48,14 @@ python3 lazarus.py exemples/demo.laz
 | `kase` / `swiv` | break / continue |
 | `vrai` / `faux` / `walu` | true / false / null |
 | `et` / `ou` / `non` | and / or / not |
+| `klas ... herite ...` *(v2)* | classes, objets, héritage |
+| `{ "cle": valeur }` *(v2)* | dictionnaires |
+| `importe "outils.laz"` *(v2)* | modules |
 
 - Accolades `{ }` pour les blocs, **pas** de point-virgules
-- Listes : `[1, 2, 3]`, intervalle : `1..10`
-- 14 fonctions intégrées : `vox`, `demand`, `nombre`, `texte`, `taille`, `ajoute`, `retire`, `hasard`, `arondi`, `majus`, `minus`, `koupe`, `tri`, `tip`
-- Messages d'erreur **en français**, clairs et pédagogiques
+- Listes : `[1, 2, 3]`, intervalle : `1..10`, dictionnaires : `{ "a": 1 }`
+- 23 fonctions intégrées : `vox`, `demand`, `nombre`, `texte`, `taille`, `ajoute`, `retire`, `hasard`, `arondi`, `majus`, `minus`, `koupe`, `tri`, `tip`, `cles`, `valeurs`, `contient`, `colle`, `remplace`, `lis_fichier`, `ecris_fichier`, `ajoute_fichier`, `fichier_existe`
+- Lecture/écriture de fichiers, messages d'erreur **en français**, clairs et pédagogiques
 
 📚 **[Guide complet du langage → GUIDE_LAZARUS.md](GUIDE_LAZARUS.md)**
 
@@ -68,7 +71,7 @@ pyproject.toml        Package pip « lazarus-lang »
 
 ## 🌍 English
 
-LAZARUS is a programming language with invented keywords (`laz` = let, `fonk` = function, `kan` = if, `tanke` = while, `pou...dan` = for...in, `vox` = print). Curly braces like Java, no semicolons like Python. It ships with a zero-dependency Python interpreter, a full in-browser playground (pure JavaScript), and beginner-friendly error messages in French. Try it: `pip install lazarus-lang`, then `lazarus examples/demo.laz`.
+LAZARUS is a programming language with invented keywords (`laz` = let, `fonk` = function, `kan` = if, `tanke` = while, `pou...dan` = for...in, `vox` = print, `klas` = class). Curly braces like Java, no semicolons like Python. Version 2.0 adds classes with inheritance, dictionaries, file I/O and modules. It ships with a zero-dependency Python interpreter, a full in-browser playground (pure JavaScript — try it at https://lazarus-language.github.io/lazarus/), and beginner-friendly error messages in French. Install: `pip install lazarus-lang`, then `lazarus exemples/demo.laz`.
 
 ## Licence
 

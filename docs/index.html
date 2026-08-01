@@ -226,9 +226,9 @@
 <body>
 
 <header>
-  <div class="logo">⚡ LAZARUS</div>
+  <div class="logo">LAZARUS</div>
   <div class="tagline">Le langage de programmation créé par <b>Ladji</b> — accolades comme Java, simplicité de Python, mots-clés uniques.</div>
-  <div class="version">v1.0</div>
+  <div class="version">v2.0</div>
 </header>
 
 <div class="toolbar">
@@ -241,6 +241,8 @@
     <option value="jeu">Jeu : devine le nombre</option>
     <option value="calc">Calculatrice</option>
     <option value="etoiles">Pyramide d'étoiles</option>
+    <option value="poo">v2.0 : classes et objets (klas)</option>
+    <option value="dico">v2.0 : dictionnaires</option>
   </select>
   <button id="btnClear">🗑 Effacer la console</button>
   <span class="hint">Astuce : Ctrl + Entrée pour exécuter</span>
@@ -308,18 +310,42 @@ l[1] = 99
 vox(tri(l))</pre>
     </div>
     <div class="cheat-card">
+      <h3>Classes &amp; objets (v2.0)</h3>
+      <pre><span class="kw">klas</span> Chien <span class="kw">herite</span> Animal {
+    <span class="kw">fonk</span> init(moi, nom) {
+        moi.nom = nom
+    }
+    <span class="kw">fonk</span> parler(moi) {
+        vox(moi.nom, "dit wouf")
+    }
+}
+laz rex = Chien("Rex")
+rex.parler()</pre>
+    </div>
+    <div class="cheat-card">
+      <h3>Dictionnaires (v2.0)</h3>
+      <pre><span class="kw">laz</span> d = { "nom": "Ladji", "age": 25 }
+vox(d["nom"])
+d["pays"] = "France"
+<span class="kw">pou</span> cle <span class="kw">dan</span> d { vox(cle) }
+# cles(d) valeurs(d) contient(d, x)</pre>
+    </div>
+    <div class="cheat-card">
       <h3>Fonctions intégrées</h3>
       <pre>vox demand nombre texte
 taille ajoute retire hasard
-arondi majus minus koupe
-tri tip
+arondi majus minus koupe tri tip
+v2.0 : cles valeurs contient
+colle remplace lis_fichier
+ecris_fichier ajoute_fichier
+fichier_existe
 # valeurs : vrai faux walu</pre>
     </div>
   </div>
 </details>
 
 <footer>
-  <b>LAZARUS v1.0</b> — créé par Ladji · Un langage libre et gratuit, pour tout le monde · Fichiers .laz
+  <b>LAZARUS v2.0</b> — créé par Ladji · Un langage libre et gratuit, pour tout le monde · <a href="https://github.com/lazarus-language/lazarus" style="color:#f0b429">GitHub</a> · pip install lazarus-lang
 </footer>
 
 <script>
@@ -352,10 +378,11 @@ const Lazarus = (function () {
 
   // ---------------- LEXER ----------------
   const KEYWORDS = new Set(['laz', 'fonk', 'rend', 'kan', 'sinon', 'tanke', 'pou', 'dan',
-    'vrai', 'faux', 'walu', 'et', 'ou', 'non', 'kase', 'swiv']);
+    'vrai', 'faux', 'walu', 'et', 'ou', 'non', 'kase', 'swiv',
+    'klas', 'herite', 'importe']);
   const TWO_CHAR = new Set(['==', '!=', '<=', '>=', '&&', '||', '..']);
   const ONE_CHAR = new Set(['+', '-', '*', '/', '%', '<', '>', '=', '(', ')',
-    '{', '}', '[', ']', ',', '!', ';']);
+    '{', '}', '[', ']', ',', '!', ';', '.', ':']);
 
   function isDigit(c) { return c >= '0' && c <= '9'; }
   function isAlpha(c) { return /[\p{L}_]/u.test(c); }
@@ -527,13 +554,57 @@ const Lazarus = (function () {
       if (this.accept('KASE')) return ['kase', line];
       if (this.accept('SWIV')) return ['swiv', line];
 
+      if (this.accept('KLAS')) {
+        const name = this.expect('IDENT', undefined, 'un nom de classe')[1];
+        let parent = null;
+        if (this.accept('HERITE')) parent = this.expect('IDENT', undefined, 'un nom de classe parente')[1];
+        this.skipNewlines();
+        this.expect('OP', '{', '{');
+        const methods = [];
+        this.skipNewlines();
+        while (!this.check('OP', '}')) {
+          if (this.check('EOF')) throw new LazError('il manque une accolade fermante } pour la klas', this.peek()[2]);
+          if (!this.check('FONK')) {
+            throw new LazError('dans une klas, on ne met que des fonctions (fonk nom(moi, ...) { ... })', this.peek()[2]);
+          }
+          this.next();
+          const mline = this.peek()[2];
+          const mname = this.expect('IDENT', undefined, 'un nom de fonction')[1];
+          this.expect('OP', '(', '(');
+          const params = [];
+          if (!this.check('OP', ')')) {
+            params.push(this.expect('IDENT', undefined, 'un paramètre')[1]);
+            while (this.accept('OP', ',')) params.push(this.expect('IDENT', undefined, 'un paramètre')[1]);
+          }
+          this.expect('OP', ')', ')');
+          if (params.length === 0) {
+            throw new LazError(`la fonction « ${mname} » d'une klas doit avoir « moi » comme premier paramètre`, mline);
+          }
+          const body = this.parseBlock();
+          methods.push([mname, params, body, mline]);
+          this.skipNewlines();
+        }
+        this.expect('OP', '}', '}');
+        return ['klas', name, parent, methods, line];
+      }
+
+      if (this.accept('IMPORTE')) {
+        const tok2 = this.peek();
+        if (tok2[0] !== 'STRING') {
+          throw new LazError('importe demande un nom de fichier entre guillemets : importe "outils.laz"', line);
+        }
+        this.next();
+        return ['importe', tok2[1], line];
+      }
+
       const expr = this.parseExpression();
       if (this.check('OP', '=')) {
         this.next();
         const value = this.parseExpression();
         if (expr[0] === 'var') return ['assign', expr[1], value, line];
         if (expr[0] === 'index') return ['assign_index', expr[1], expr[2], value, line];
-        throw new LazError("on ne peut affecter une valeur qu'à une variable ou à un élément de liste", line);
+        if (expr[0] === 'attr') return ['assign_attr', expr[1], expr[2], value, line];
+        throw new LazError("on ne peut affecter une valeur qu'à une variable, un élément de liste/dico ou une propriété d'objet", line);
       }
       return ['expr', expr, line];
     }
@@ -641,6 +712,10 @@ const Lazarus = (function () {
           const index = this.parseExpression();
           this.expect('OP', ']', ']');
           expr = ['index', expr, index, tok[2]];
+        } else if (tok[0] === 'OP' && tok[1] === '.') {
+          this.next();
+          const name = this.expect('IDENT', undefined, 'un nom de propriété')[1];
+          expr = ['attr', expr, name, tok[2]];
         } else break;
       }
       return expr;
@@ -674,6 +749,27 @@ const Lazarus = (function () {
         this.expect('OP', ']', ']');
         return ['list', items, tok[2]];
       }
+      if (tok[0] === 'OP' && tok[1] === '{') {
+        this.next();
+        const pairs = [];
+        this.skipNewlines();
+        if (!this.check('OP', '}')) {
+          for (;;) {
+            this.skipNewlines();
+            const key = this.parseExpression();
+            this.skipNewlines();
+            this.expect('OP', ':', ':');
+            this.skipNewlines();
+            const value = this.parseExpression();
+            pairs.push([key, value]);
+            this.skipNewlines();
+            if (!this.accept('OP', ',')) break;
+          }
+          this.skipNewlines();
+        }
+        this.expect('OP', '}', '}');
+        return ['dict', pairs, tok[2]];
+      }
       let trouve = tok[1] !== null ? tok[1] : tok[0];
       trouve = NICE[trouve] || trouve;
       throw new LazError(`expression invalide, je ne comprends pas « ${trouve} » (il manque peut-être une valeur)`, tok[2]);
@@ -702,6 +798,25 @@ const Lazarus = (function () {
     }
   }
 
+  class LazClass {
+    constructor(name, methods, parent) {
+      this.name = name; this.methods = methods; this.parent = parent || null;
+    }
+    findMethod(name) {
+      let k = this;
+      while (k) { if (k.methods.has(name)) return k.methods.get(name); k = k.parent; }
+      return null;
+    }
+  }
+
+  class LazInstance {
+    constructor(klass) { this.klass = klass; this.fields = new Map(); }
+  }
+
+  class BoundMethod {
+    constructor(fn, instance) { this.fn = fn; this.instance = instance; }
+  }
+
   // ---------------- VALEURS ----------------
   function numText(v) {
     if (Number.isInteger(v)) return String(v);
@@ -715,7 +830,19 @@ const Lazarus = (function () {
     if (Array.isArray(v)) {
       return '[' + v.map(x => typeof x === 'string' ? `"${x}"` : toText(x)).join(', ') + ']';
     }
+    if (v instanceof Map) {
+      const parts = [];
+      for (const [k, val] of v.entries()) {
+        const ks = typeof k === 'string' ? `"${k}"` : toText(k);
+        const vs = typeof val === 'string' ? `"${val}"` : toText(val);
+        parts.push(`${ks}: ${vs}`);
+      }
+      return '{' + parts.join(', ') + '}';
+    }
     if (v instanceof LazFunction) return `<fonk ${v.name}>`;
+    if (v instanceof LazClass) return `<klas ${v.name}>`;
+    if (v instanceof LazInstance) return `<objet ${v.klass.name}>`;
+    if (v instanceof BoundMethod) return `<fonk ${v.fn.name}>`;
     return String(v);
   }
   function isTruthy(v) {
@@ -723,6 +850,7 @@ const Lazarus = (function () {
     if (v === true) return true;
     if (typeof v === 'number') return v !== 0;
     if (typeof v === 'string' || Array.isArray(v)) return v.length > 0;
+    if (v instanceof Map) return v.size > 0;
     return true;
   }
   function checkNumber(v, line, contexte) {
@@ -738,6 +866,7 @@ const Lazarus = (function () {
   class Interpreter {
     constructor(io) {
       this.io = io;
+      this.fs = (io && io.fs) || new Map();
       this.globals = new Env(null);
       this.steps = 0;
       this.makeBuiltins();
@@ -785,7 +914,8 @@ const Lazarus = (function () {
         self.need(args, 1, 'taille', line);
         const v = args[0];
         if (typeof v === 'string' || Array.isArray(v)) return v.length;
-        throw new LazError('taille() fonctionne avec un texte ou une liste', line);
+        if (v instanceof Map) return v.size;
+        throw new LazError('taille() fonctionne avec un texte, une liste ou un dictionnaire', line);
       });
       B('ajoute', async (args, line) => {
         self.need(args, 2, 'ajoute', line);
@@ -795,14 +925,21 @@ const Lazarus = (function () {
       });
       B('retire', async (args, line) => {
         self.need(args, 2, 'retire', line);
-        const lst = args[0];
-        if (!Array.isArray(lst)) throw new LazError('retire() demande une liste en premier argument', line);
-        let idx = Math.trunc(checkNumber(args[1], line, 'retire()'));
-        if (idx < -lst.length || idx >= lst.length) {
-          throw new LazError(`position ${idx} hors de la liste (taille ${lst.length})`, line);
+        const c = args[0];
+        if (c instanceof Map) {
+          const key = checkDictKey(args[1], line);
+          if (!c.has(key)) throw new LazError(`la clé « ${toText(key)} » n'existe pas dans le dictionnaire`, line);
+          const v = c.get(key);
+          c.delete(key);
+          return v;
         }
-        if (idx < 0) idx += lst.length;
-        return lst.splice(idx, 1)[0];
+        if (!Array.isArray(c)) throw new LazError('retire() demande une liste ou un dictionnaire en premier argument', line);
+        let idx = Math.trunc(checkNumber(args[1], line, 'retire()'));
+        if (idx < -c.length || idx >= c.length) {
+          throw new LazError(`position ${idx} hors de la liste (taille ${c.length})`, line);
+        }
+        if (idx < 0) idx += c.length;
+        return c.splice(idx, 1)[0];
       });
       B('hasard', async (args, line) => {
         self.need(args, 2, 'hasard', line);
@@ -843,8 +980,61 @@ const Lazarus = (function () {
         if (typeof v === 'number') return 'nombre';
         if (typeof v === 'string') return 'texte';
         if (Array.isArray(v)) return 'liste';
-        if (v instanceof LazFunction) return 'fonk';
+        if (v instanceof Map) return 'dico';
+        if (v instanceof LazInstance) return v.klass.name;
+        if (v instanceof LazClass) return 'klas';
+        if (v instanceof LazFunction || v instanceof BoundMethod) return 'fonk';
         return 'inconnu';
+      });
+
+      // --- nouveautés v2.0 ---
+      B('cles', async (args, line) => {
+        self.need(args, 1, 'cles', line);
+        if (!(args[0] instanceof Map)) throw new LazError('cles() demande un dictionnaire', line);
+        return [...args[0].keys()];
+      });
+      B('valeurs', async (args, line) => {
+        self.need(args, 1, 'valeurs', line);
+        if (!(args[0] instanceof Map)) throw new LazError('valeurs() demande un dictionnaire', line);
+        return [...args[0].values()];
+      });
+      B('contient', async (args, line) => {
+        self.need(args, 2, 'contient', line);
+        const c = args[0], x = args[1];
+        if (c instanceof Map) return c.has(x);
+        if (Array.isArray(c)) return c.some(v => lazEquals(v, x));
+        if (typeof c === 'string') return c.includes(toText(x));
+        throw new LazError('contient() demande un texte, une liste ou un dictionnaire en premier argument', line);
+      });
+      B('colle', async (args, line) => {
+        self.need(args, 2, 'colle', line);
+        if (!Array.isArray(args[0])) throw new LazError('colle() demande une liste en premier argument', line);
+        return args[0].map(toText).join(toText(args[1]));
+      });
+      B('remplace', async (args, line) => {
+        self.need(args, 3, 'remplace', line);
+        return toText(args[0]).split(toText(args[1])).join(toText(args[2]));
+      });
+      B('lis_fichier', async (args, line) => {
+        self.need(args, 1, 'lis_fichier', line);
+        const chemin = toText(args[0]);
+        if (!self.fs.has(chemin)) throw new LazError(`fichier introuvable : ${chemin}`, line);
+        return self.fs.get(chemin);
+      });
+      B('ecris_fichier', async (args, line) => {
+        self.need(args, 2, 'ecris_fichier', line);
+        self.fs.set(toText(args[0]), toText(args[1]));
+        return null;
+      });
+      B('ajoute_fichier', async (args, line) => {
+        self.need(args, 2, 'ajoute_fichier', line);
+        const chemin = toText(args[0]);
+        self.fs.set(chemin, (self.fs.get(chemin) || '') + toText(args[1]));
+        return null;
+      });
+      B('fichier_existe', async (args, line) => {
+        self.need(args, 1, 'fichier_existe', line);
+        return self.fs.has(toText(args[0]));
       });
     }
 
@@ -879,7 +1069,11 @@ const Lazarus = (function () {
         const target = await this.eval(targetNode, env);
         const index = await this.eval(indexNode, env);
         const value = await this.eval(valueNode, env);
-        if (!Array.isArray(target)) throw new LazError('on ne peut modifier par position que les listes', line);
+        if (target instanceof Map) {
+          target.set(checkDictKey(index, line), value);
+          return null;
+        }
+        if (!Array.isArray(target)) throw new LazError('on ne peut modifier par position que les listes et les dictionnaires', line);
         let idx = Math.trunc(checkNumber(index, line, "l'indexation"));
         if (idx < -target.length || idx >= target.length) {
           throw new LazError(`position ${idx} hors de la liste (taille ${target.length})`, line);
@@ -887,6 +1081,34 @@ const Lazarus = (function () {
         if (idx < 0) idx += target.length;
         target[idx] = value;
         return null;
+      }
+      if (kind === 'assign_attr') {
+        const [, objNode, name, valueNode, line] = stmt;
+        const obj = await this.eval(objNode, env);
+        if (!(obj instanceof LazInstance)) {
+          throw new LazError('on ne peut modifier une propriété (avec le point .) que sur un objet de klas', line);
+        }
+        obj.fields.set(name, await this.eval(valueNode, env));
+        return null;
+      }
+      if (kind === 'klas') {
+        const [, name, parentName, methods, line] = stmt;
+        let parent = null;
+        if (parentName) {
+          parent = env.get(parentName, line);
+          if (!(parent instanceof LazClass)) {
+            throw new LazError(`« ${parentName} » n'est pas une klas, impossible d'en hériter`, line);
+          }
+        }
+        const mmap = new Map();
+        for (const [mname, params, body] of methods) {
+          mmap.set(mname, new LazFunction(mname, params, body, env));
+        }
+        env.declare(name, new LazClass(name, mmap, parent));
+        return null;
+      }
+      if (kind === 'importe') {
+        throw new LazError("importe n'est pas disponible dans le playground web — utilise la version Python (pip install lazarus-lang)", stmt[2]);
       }
       if (kind === 'fonk') {
         env.declare(stmt[1], new LazFunction(stmt[1], stmt[2], stmt[3], env));
@@ -915,8 +1137,9 @@ const Lazarus = (function () {
         const [, varName, iterableNode, body, line] = stmt;
         let iterable = await this.eval(iterableNode, env);
         if (typeof iterable === 'string') iterable = iterable.split('');
+        if (iterable instanceof Map) iterable = [...iterable.keys()];
         if (!Array.isArray(iterable)) {
-          throw new LazError('« pou ... dan ... » demande une liste, un intervalle (1..10) ou un texte', line);
+          throw new LazError('« pou ... dan ... » demande une liste, un intervalle (1..10), un texte ou un dictionnaire', line);
         }
         env.declare(varName, null);
         for (const item of iterable) {
@@ -953,6 +1176,26 @@ const Lazarus = (function () {
         const out = [];
         for (const item of node[1]) out.push(await this.eval(item, env));
         return out;
+      }
+      if (kind === 'dict') {
+        const [, pairs, line] = node;
+        const d = new Map();
+        for (const [knode, vnode] of pairs) {
+          const k = checkDictKey(await this.eval(knode, env), line);
+          d.set(k, await this.eval(vnode, env));
+        }
+        return d;
+      }
+      if (kind === 'attr') {
+        const [, objNode, name, line] = node;
+        const obj = await this.eval(objNode, env);
+        if (obj instanceof LazInstance) {
+          if (obj.fields.has(name)) return obj.fields.get(name);
+          const m = obj.klass.findMethod(name);
+          if (m) return new BoundMethod(m, obj);
+          throw new LazError(`« ${name} » n'existe pas dans cet objet de klas ${obj.klass.name}`, line);
+        }
+        throw new LazError(`le point (.${name}) s'utilise sur un objet créé avec une klas`, line);
       }
       if (kind === 'range') {
         const [, startNode, endNode, line] = node;
@@ -1024,8 +1267,13 @@ const Lazarus = (function () {
         const [, targetNode, indexNode, line] = node;
         const target = await this.eval(targetNode, env);
         const index = await this.eval(indexNode, env);
+        if (target instanceof Map) {
+          const k = checkDictKey(index, line);
+          if (!target.has(k)) throw new LazError(`la clé « ${toText(k)} » n'existe pas dans le dictionnaire`, line);
+          return target.get(k);
+        }
         if (!(Array.isArray(target) || typeof target === 'string')) {
-          throw new LazError('on ne peut indexer que les listes et les textes', line);
+          throw new LazError('on ne peut indexer que les listes, les textes et les dictionnaires', line);
         }
         let idx = Math.trunc(checkNumber(index, line, "l'indexation"));
         if (idx < -target.length || idx >= target.length) {
@@ -1047,19 +1295,48 @@ const Lazarus = (function () {
             throw new LazError(
               `la fonction « ${callee.name} » attend ${callee.params.length} argument(s), reçu ${args.length}`, line);
           }
-          const callEnv = new Env(callee.env);
-          for (let i = 0; i < args.length; i++) callEnv.declare(callee.params[i], args[i]);
-          try {
-            await this.execBlock(callee.body, callEnv);
-          } catch (e) {
-            if (e instanceof ReturnEx) return e.value;
-            throw e;
-          }
-          return null;
+          return await this.callFunction(callee, args);
         }
+
+        if (callee instanceof BoundMethod) {
+          const fn = callee.fn;
+          const expected = fn.params.length - 1;
+          if (args.length !== expected) {
+            throw new LazError(`la fonction « ${fn.name} » attend ${expected} argument(s), reçu ${args.length}`, line);
+          }
+          return await this.callFunction(fn, [callee.instance, ...args]);
+        }
+
+        if (callee instanceof LazClass) {
+          const inst = new LazInstance(callee);
+          const init = callee.findMethod('init');
+          if (init) {
+            const expected = init.params.length - 1;
+            if (args.length !== expected) {
+              throw new LazError(`la klas « ${callee.name} » attend ${expected} argument(s) pour init, reçu ${args.length}`, line);
+            }
+            await this.callFunction(init, [inst, ...args]);
+          } else if (args.length) {
+            throw new LazError(`la klas « ${callee.name} » n'a pas de fonction init : on l'appelle sans argument`, line);
+          }
+          return inst;
+        }
+
         throw new LazError(`« ${toText(callee)} » n'est pas une fonction`, line);
       }
       throw new LazError(`expression inconnue : ${kind}`);
+    }
+
+    async callFunction(fn, args) {
+      const callEnv = new Env(fn.env);
+      for (let i = 0; i < args.length; i++) callEnv.declare(fn.params[i], args[i]);
+      try {
+        await this.execBlock(fn.body, callEnv);
+      } catch (e) {
+        if (e instanceof ReturnEx) return e.value;
+        throw e;
+      }
+      return null;
     }
   }
 
@@ -1069,7 +1346,21 @@ const Lazarus = (function () {
       for (let i = 0; i < a.length; i++) if (!lazEquals(a[i], b[i])) return false;
       return true;
     }
+    if (a instanceof Map && b instanceof Map) {
+      if (a.size !== b.size) return false;
+      for (const [k, v] of a.entries()) {
+        if (!b.has(k) || !lazEquals(v, b.get(k))) return false;
+      }
+      return true;
+    }
     return a === b;
+  }
+
+  function checkDictKey(k, line) {
+    if (!(typeof k === 'string' || typeof k === 'number')) {
+      throw new LazError("les clés d'un dictionnaire doivent être des textes ou des nombres", line);
+    }
+    return k;
   }
 
   // ---------------- API PUBLIQUE ----------------
@@ -1096,7 +1387,7 @@ const Lazarus = (function () {
     }
   }
 
-  return { run, toText, LazError, version: '1.0' };
+  return { run, toText, LazError, version: '2.0' };
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = Lazarus;
@@ -1212,6 +1503,57 @@ kan op == "+" {
     vox("Opération inconnue :", op)
 }
 `;
+  EX.poo = `# ===== v2.0 : Classes et objets =====
+klas Animal {
+    fonk init(moi, nom, cri) {
+        moi.nom = nom
+        moi.cri = cri
+    }
+    fonk parler(moi) {
+        vox(moi.nom, "dit :", moi.cri)
+    }
+}
+
+klas Chien herite Animal {
+    fonk init(moi, nom) {
+        moi.nom = nom
+        moi.cri = "Wouf wouf !"
+        moi.os = 0
+    }
+    fonk creuser(moi) {
+        moi.os = moi.os + 1
+        vox(moi.nom, "a trouvé un os ! Total :", moi.os)
+    }
+}
+
+laz minou = Animal("Minou", "Miaou !")
+laz medor = Chien("Médor")
+
+minou.parler()
+medor.parler()      # méthode héritée
+medor.creuser()
+medor.creuser()
+vox("Type de médor :", tip(medor))
+`;
+  EX.dico = `# ===== v2.0 : Dictionnaires =====
+laz personne = {
+    "nom": "Ladji",
+    "metier": "créateur de langage",
+    "age": 25
+}
+
+vox("Nom :", personne["nom"])
+personne["pays"] = "France"
+
+vox("Toutes les infos :")
+pou cle dan personne {
+    vox("  -", cle, ":", personne[cle])
+}
+
+vox("Clés :", cles(personne))
+vox("Contient nom ?", contient(personne, "nom"))
+vox("Taille :", taille(personne))
+`;
   EX.etoiles = `# ===== Pyramide d'étoiles =====
 laz hauteur = 7
 
@@ -1314,6 +1656,7 @@ vox("LAZARUS !")
   let running = false;
   let stopFlag = false;
   let currentInputCancel = null;
+  const virtualFS = new Map();   // système de fichiers virtuel du playground
 
   async function runProgram() {
     if (running) return;
@@ -1328,6 +1671,7 @@ vox("LAZARUS !")
       onInput: (p) => askInput(p),
       shouldStop: () => stopFlag,
       onYield: () => new Promise(r => setTimeout(r, 0)),
+      fs: virtualFS,   // fichiers virtuels : persistent tant que la page est ouverte
     };
 
     const result = await Lazarus.run(editor.value, io);
@@ -1348,7 +1692,7 @@ vox("LAZARUS !")
   });
   btnClear.addEventListener('click', () => { consoleEl.innerHTML = ''; });
 
-  addLine('Bienvenue dans LAZARUS ! Clique sur ▶ Exécuter, ou charge un exemple. ⚡', 'sys');
+  addLine('Bienvenue dans LAZARUS v2.0 ! Clique sur ▶ Exécuter, ou charge un exemple.', 'sys');
 })();
 </script>
 

@@ -1,0 +1,11 @@
+# Petit module d'outils — à importer avec : importe "outils.laz"
+
+fonk double(x) {
+    rend x * 2
+}
+
+fonk crier(texte_a_crier) {
+    rend majus(texte_a_crier) + " !!!"
+}
+
+laz PI = 3.14159

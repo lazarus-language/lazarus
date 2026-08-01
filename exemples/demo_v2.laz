@@ -1,0 +1,99 @@
+# ============================================================
+#  DEMO_V2.LAZ — Les nouveautés de LAZARUS 2.0
+# ============================================================
+
+vox("===== 1. Dictionnaires =====")
+laz personne = { "nom": "Ladji", "age": 25, "pays": "France" }
+vox("Nom :", personne["nom"])
+vox("Taille du dico :", taille(personne))
+
+personne["metier"] = "createur de langage"
+vox("Apres ajout :", personne["metier"])
+
+vox("Cles :", cles(personne))
+vox("Contient nom ?", contient(personne, "nom"))
+vox("Contient email ?", contient(personne, "email"))
+
+pou cle dan personne {
+    vox("  -", cle, "=", personne[cle])
+}
+
+retire(personne, "pays")
+vox("Apres retrait :", taille(personne), "cles")
+
+vox("")
+vox("===== 2. Classes (klas) =====")
+klas Animal {
+    fonk init(moi, nom, cri) {
+        moi.nom = nom
+        moi.cri = cri
+    }
+    fonk parler(moi) {
+        vox(moi.nom, "dit :", moi.cri)
+    }
+    fonk presenter(moi) {
+        rend "Je suis " + moi.nom
+    }
+}
+
+laz rex = Animal("Rex", "Wouf !")
+laz minou = Animal("Minou", "Miaou !")
+rex.parler()
+minou.parler()
+vox(rex.presenter())
+vox("Type de rex :", tip(rex))
+
+vox("")
+vox("===== 3. Héritage (herite) =====")
+klas Chien herite Animal {
+    fonk init(moi, nom) {
+        moi.nom = nom
+        moi.cri = "Wouf wouf !"
+        moi.os = 0
+    }
+    fonk creuser(moi) {
+        moi.os = moi.os + 1
+        vox(moi.nom, "a trouve un os ! Total :", moi.os)
+    }
+}
+
+laz medor = Chien("Medor")
+medor.parler()          # méthode héritée de Animal
+medor.creuser()
+medor.creuser()
+vox(medor.presenter())  # héritée aussi
+
+vox("")
+vox("===== 4. Compteur (objet avec etat) =====")
+klas Compteur {
+    fonk init(moi) {
+        moi.valeur = 0
+    }
+    fonk plus(moi, n) {
+        moi.valeur = moi.valeur + n
+        rend moi.valeur
+    }
+}
+laz c = Compteur()
+c.plus(5)
+c.plus(10)
+vox("Compteur :", c.valeur)
+
+vox("")
+vox("===== 5. Nouveaux outils texte/liste =====")
+laz mots = ["LAZARUS", "version", "2.0"]
+vox(colle(mots, " "))
+vox(remplace("j'aime java", "java", "LAZARUS"))
+vox("Contient ZAR ?", contient("LAZARUS", "ZAR"))
+
+vox("")
+vox("===== 6. Fichiers =====")
+ecris_fichier("test_v2.txt", "Ligne 1 : LAZARUS ecrit dans les fichiers !")
+ajoute_fichier("test_v2.txt", "\nLigne 2 : et il sait ajouter.")
+vox("Le fichier existe ?", fichier_existe("test_v2.txt"))
+laz contenu = lis_fichier("test_v2.txt")
+vox("Contenu lu :")
+vox(contenu)
+
+vox("")
+vox("Demo v2.0 terminee. LAZARUS est monte en puissance !")

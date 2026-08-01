@@ -1,0 +1,6 @@
+# Démonstration de l'import de fichiers (v2.0)
+importe "outils.laz"
+
+vox(double(21))
+vox(crier("lazarus est modulaire"))
+vox("PI vaut environ", PI)

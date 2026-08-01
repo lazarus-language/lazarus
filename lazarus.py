@@ -9,7 +9,7 @@
 ╚══════╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚══════╝
 
 LAZARUS — Le langage de programmation de Ladji
-Version 1.0
+Version 2.0
 
 Syntaxe hybride Java + Python : des accolades { } mais pas de point-virgules.
 Mots-clés inventés :
@@ -25,12 +25,21 @@ Mots-clés inventés :
     vrai / faux / walu -> true / false / null
     et / ou / non      -> and / or / not
 
+Nouveautés v2.0 :
+    klas     -> définir une classe (objets)
+    herite   -> héritage entre classes
+    importe  -> importer un autre fichier .laz
+    { "cle": valeur }  -> dictionnaires
+    objet.propriete    -> accès aux propriétés (point)
+    lis_fichier / ecris_fichier / ajoute_fichier / fichier_existe
+
 Utilisation :
     python3 lazarus.py programme.laz    (exécuter un fichier)
     python3 lazarus.py                  (mode interactif)
 """
 
 import sys
+import os
 import random
 
 # ============================================================
@@ -65,11 +74,12 @@ class ContinueEx(Exception):
 KEYWORDS = {
     'laz', 'fonk', 'rend', 'kan', 'sinon', 'tanke', 'pou', 'dan',
     'vrai', 'faux', 'walu', 'et', 'ou', 'non', 'kase', 'swiv',
+    'klas', 'herite', 'importe',
 }
 
 TWO_CHAR_OPS = {'==', '!=', '<=', '>=', '&&', '||', '..'}
 ONE_CHAR_OPS = {'+', '-', '*', '/', '%', '<', '>', '=', '(', ')',
-                '{', '}', '[', ']', ',', '!', ';'}
+                '{', '}', '[', ']', ',', '!', ';', '.', ':'}
 
 def tokenize(source):
     tokens = []
@@ -292,6 +302,45 @@ class Parser:
         if self.accept('SWIV'):
             return ('swiv', line)
 
+        if self.accept('KLAS'):
+            name = self.expect('IDENT', what='un nom de classe')[1]
+            parent = None
+            if self.accept('HERITE'):
+                parent = self.expect('IDENT', what='un nom de classe parente')[1]
+            self.skip_newlines()
+            self.expect('OP', '{', '{')
+            methods = []
+            self.skip_newlines()
+            while not self.check('OP', '}'):
+                if self.check('EOF'):
+                    raise LazError('il manque une accolade fermante } pour la klas', self.peek()[2])
+                if not self.check('FONK'):
+                    raise LazError('dans une klas, on ne met que des fonctions (fonk nom(moi, ...) { ... })', self.peek()[2])
+                self.next()
+                mline = self.peek()[2]
+                mname = self.expect('IDENT', what='un nom de fonction')[1]
+                self.expect('OP', '(', '(')
+                params = []
+                if not self.check('OP', ')'):
+                    params.append(self.expect('IDENT', what='un paramètre')[1])
+                    while self.accept('OP', ','):
+                        params.append(self.expect('IDENT', what='un paramètre')[1])
+                self.expect('OP', ')', ')')
+                if not params:
+                    raise LazError(f"la fonction « {mname} » d'une klas doit avoir « moi » comme premier paramètre", mline)
+                body = self.parse_block()
+                methods.append((mname, params, body, mline))
+                self.skip_newlines()
+            self.expect('OP', '}', '}')
+            return ('klas', name, parent, methods, line)
+
+        if self.accept('IMPORTE'):
+            tok2 = self.peek()
+            if tok2[0] != 'STRING':
+                raise LazError('importe demande un nom de fichier entre guillemets : importe "outils.laz"', line)
+            self.next()
+            return ('importe', tok2[1], line)
+
         # expression ou affectation
         expr = self.parse_expression()
         if self.check('OP', '='):
@@ -301,7 +350,9 @@ class Parser:
                 return ('assign', expr[1], value, line)
             if expr[0] == 'index':
                 return ('assign_index', expr[1], expr[2], value, line)
-            raise LazError("on ne peut affecter une valeur qu'à une variable ou à un élément de liste", line)
+            if expr[0] == 'attr':
+                return ('assign_attr', expr[1], expr[2], value, line)
+            raise LazError("on ne peut affecter une valeur qu'à une variable, un élément de liste/dico ou une propriété d'objet", line)
         return ('expr', expr, line)
 
     def parse_kan(self, line):
@@ -417,6 +468,10 @@ class Parser:
                 index = self.parse_expression()
                 self.expect('OP', ']', ']')
                 expr = ('index', expr, index, tok[2])
+            elif tok[0] == 'OP' and tok[1] == '.':
+                self.next()
+                name = self.expect('IDENT', what='un nom de propriété')[1]
+                expr = ('attr', expr, name, tok[2])
             else:
                 break
         return expr
@@ -459,6 +514,25 @@ class Parser:
                 self.skip_newlines()
             self.expect('OP', ']', ']')
             return ('list', items, tok[2])
+        if tok[0] == 'OP' and tok[1] == '{':
+            self.next()
+            pairs = []
+            self.skip_newlines()
+            if not self.check('OP', '}'):
+                while True:
+                    self.skip_newlines()
+                    key = self.parse_expression()
+                    self.skip_newlines()
+                    self.expect('OP', ':', ':')
+                    self.skip_newlines()
+                    value = self.parse_expression()
+                    pairs.append((key, value))
+                    self.skip_newlines()
+                    if not self.accept('OP', ','):
+                        break
+                self.skip_newlines()
+            self.expect('OP', '}', '}')
+            return ('dict', pairs, tok[2])
 
         trouve = tok[1] if tok[1] is not None else tok[0]
         trouve = {'NEWLINE': 'une fin de ligne', 'EOF': 'la fin du fichier'}.get(trouve, trouve)
@@ -504,6 +578,30 @@ class LazFunction:
         self.body = body
         self.env = env
 
+class LazClass:
+    def __init__(self, name, methods, parent=None):
+        self.name = name
+        self.methods = methods   # dict : nom -> LazFunction
+        self.parent = parent
+
+    def find_method(self, name):
+        k = self
+        while k is not None:
+            if name in k.methods:
+                return k.methods[name]
+            k = k.parent
+        return None
+
+class LazInstance:
+    def __init__(self, klass):
+        self.klass = klass
+        self.fields = {}
+
+class BoundMethod:
+    def __init__(self, fn, instance):
+        self.fn = fn
+        self.instance = instance
+
 def to_text(value):
     if value is None:
         return 'walu'
@@ -517,8 +615,21 @@ def to_text(value):
         return '[' + ', '.join(
             f'"{v}"' if isinstance(v, str) else to_text(v) for v in value
         ) + ']'
+    if isinstance(value, dict):
+        parts = []
+        for k, v in value.items():
+            ks = f'"{k}"' if isinstance(k, str) else to_text(k)
+            vs = f'"{v}"' if isinstance(v, str) else to_text(v)
+            parts.append(f'{ks}: {vs}')
+        return '{' + ', '.join(parts) + '}'
     if isinstance(value, LazFunction):
         return f'<fonk {value.name}>'
+    if isinstance(value, LazClass):
+        return f'<klas {value.name}>'
+    if isinstance(value, LazInstance):
+        return f'<objet {value.klass.name}>'
+    if isinstance(value, BoundMethod):
+        return f'<fonk {value.fn.name}>'
     return str(value)
 
 def is_truthy(value):
@@ -528,7 +639,7 @@ def is_truthy(value):
         return True
     if isinstance(value, (int, float)):
         return value != 0
-    if isinstance(value, (str, list)):
+    if isinstance(value, (str, list, dict)):
         return len(value) > 0
     return True
 
@@ -574,9 +685,9 @@ def make_builtins(env):
     def b_taille(args, line):
         _need(args, 1, 'taille', line)
         v = args[0]
-        if isinstance(v, (str, list)):
+        if isinstance(v, (str, list, dict)):
             return len(v)
-        raise LazError("taille() fonctionne avec un texte ou une liste", line)
+        raise LazError("taille() fonctionne avec un texte, une liste ou un dictionnaire", line)
 
     def b_ajoute(args, line):
         _need(args, 2, 'ajoute', line)
@@ -587,13 +698,20 @@ def make_builtins(env):
 
     def b_retire(args, line):
         _need(args, 2, 'retire', line)
-        lst, idx = args[0], args[1]
-        if not isinstance(lst, list):
-            raise LazError("retire() demande une liste en premier argument", line)
-        idx = int(check_number(idx, line, 'retire()'))
-        if idx < -len(lst) or idx >= len(lst):
-            raise LazError(f"position {idx} hors de la liste (taille {len(lst)})", line)
-        return lst.pop(idx)
+        c = args[0]
+        if isinstance(c, dict):
+            key = args[1]
+            if isinstance(key, bool) or not isinstance(key, (str, int, float)):
+                raise LazError("les clés d'un dictionnaire doivent être des textes ou des nombres", line)
+            if key not in c:
+                raise LazError(f"la clé « {to_text(key)} » n'existe pas dans le dictionnaire", line)
+            return c.pop(key)
+        if isinstance(c, list):
+            idx = int(check_number(args[1], line, 'retire()'))
+            if idx < -len(c) or idx >= len(c):
+                raise LazError(f"position {idx} hors de la liste (taille {len(c)})", line)
+            return c.pop(idx)
+        raise LazError("retire() demande une liste ou un dictionnaire en premier argument", line)
 
     def b_hasard(args, line):
         _need(args, 2, 'hasard', line)
@@ -638,8 +756,79 @@ def make_builtins(env):
         if isinstance(v, (int, float)): return 'nombre'
         if isinstance(v, str): return 'texte'
         if isinstance(v, list): return 'liste'
-        if isinstance(v, LazFunction): return 'fonk'
+        if isinstance(v, dict): return 'dico'
+        if isinstance(v, LazInstance): return v.klass.name
+        if isinstance(v, LazClass): return 'klas'
+        if isinstance(v, (LazFunction, BoundMethod)): return 'fonk'
         return 'inconnu'
+
+    def b_cles(args, line):
+        _need(args, 1, 'cles', line)
+        if not isinstance(args[0], dict):
+            raise LazError('cles() demande un dictionnaire', line)
+        return list(args[0].keys())
+
+    def b_valeurs(args, line):
+        _need(args, 1, 'valeurs', line)
+        if not isinstance(args[0], dict):
+            raise LazError('valeurs() demande un dictionnaire', line)
+        return list(args[0].values())
+
+    def b_contient(args, line):
+        _need(args, 2, 'contient', line)
+        c, x = args[0], args[1]
+        if isinstance(c, dict):
+            return x in c
+        if isinstance(c, list):
+            return x in c
+        if isinstance(c, str):
+            return to_text(x) in c
+        raise LazError('contient() demande un texte, une liste ou un dictionnaire en premier argument', line)
+
+    def b_colle(args, line):
+        _need(args, 2, 'colle', line)
+        if not isinstance(args[0], list):
+            raise LazError('colle() demande une liste en premier argument', line)
+        return to_text(args[1]).join(to_text(x) for x in args[0])
+
+    def b_remplace(args, line):
+        _need(args, 3, 'remplace', line)
+        return to_text(args[0]).replace(to_text(args[1]), to_text(args[2]))
+
+    def b_lis_fichier(args, line):
+        _need(args, 1, 'lis_fichier', line)
+        chemin = to_text(args[0])
+        try:
+            with open(chemin, 'r', encoding='utf-8') as f:
+                return f.read()
+        except FileNotFoundError:
+            raise LazError(f"fichier introuvable : {chemin}", line)
+        except OSError as e:
+            raise LazError(f"impossible de lire « {chemin} » : {e}", line)
+
+    def b_ecris_fichier(args, line):
+        _need(args, 2, 'ecris_fichier', line)
+        chemin = to_text(args[0])
+        try:
+            with open(chemin, 'w', encoding='utf-8') as f:
+                f.write(to_text(args[1]))
+            return None
+        except OSError as e:
+            raise LazError(f"impossible d'écrire « {chemin} » : {e}", line)
+
+    def b_ajoute_fichier(args, line):
+        _need(args, 2, 'ajoute_fichier', line)
+        chemin = to_text(args[0])
+        try:
+            with open(chemin, 'a', encoding='utf-8') as f:
+                f.write(to_text(args[1]))
+            return None
+        except OSError as e:
+            raise LazError(f"impossible d'écrire « {chemin} » : {e}", line)
+
+    def b_fichier_existe(args, line):
+        _need(args, 1, 'fichier_existe', line)
+        return os.path.exists(to_text(args[0]))
 
     def _need(args, count, name, line):
         if len(args) < count:
@@ -660,6 +849,16 @@ def make_builtins(env):
         'koupe': b_koupe,    # découper un texte en liste
         'tri': b_tri,        # trier une liste
         'tip': b_tip,        # type d'une valeur
+        # --- nouveautés v2.0 ---
+        'cles': b_cles,               # clés d'un dictionnaire
+        'valeurs': b_valeurs,         # valeurs d'un dictionnaire
+        'contient': b_contient,       # x est-il dans le texte/liste/dico ?
+        'colle': b_colle,             # assembler une liste en texte
+        'remplace': b_remplace,       # remplacer dans un texte
+        'lis_fichier': b_lis_fichier,       # lire un fichier
+        'ecris_fichier': b_ecris_fichier,   # écrire (écraser) un fichier
+        'ajoute_fichier': b_ajoute_fichier, # ajouter à la fin d'un fichier
+        'fichier_existe': b_fichier_existe, # le fichier existe-t-il ?
     }
     for name, fn in builtins.items():
         env.declare(name, ('builtin', name, fn))
@@ -671,6 +870,8 @@ def make_builtins(env):
 class Interpreter:
     def __init__(self):
         self.globals = Env()
+        self.imported = set()
+        self.base_dir = '.'
         make_builtins(self.globals)
 
     def run(self, source):
@@ -702,12 +903,55 @@ class Interpreter:
             target = self.eval(target_node, env)
             index = self.eval(index_node, env)
             value = self.eval(value_node, env)
+            if isinstance(target, dict):
+                if isinstance(index, bool) or not isinstance(index, (str, int, float)):
+                    raise LazError("les clés d'un dictionnaire doivent être des textes ou des nombres", line)
+                target[index] = value
+                return None
             if not isinstance(target, list):
-                raise LazError("on ne peut modifier par position que les listes", line)
+                raise LazError("on ne peut modifier par position que les listes et les dictionnaires", line)
             idx = int(check_number(index, line, "l'indexation"))
             if idx < -len(target) or idx >= len(target):
                 raise LazError(f"position {idx} hors de la liste (taille {len(target)})", line)
             target[idx] = value
+            return None
+
+        if kind == 'assign_attr':
+            _, obj_node, name, value_node, line = stmt
+            obj = self.eval(obj_node, env)
+            if not isinstance(obj, LazInstance):
+                raise LazError("on ne peut modifier une propriété (avec le point .) que sur un objet de klas", line)
+            obj.fields[name] = self.eval(value_node, env)
+            return None
+
+        if kind == 'klas':
+            _, name, parent_name, methods, line = stmt
+            parent = None
+            if parent_name:
+                parent = env.get(parent_name, line)
+                if not isinstance(parent, LazClass):
+                    raise LazError(f"« {parent_name} » n'est pas une klas, impossible d'en hériter", line)
+            mdict = {}
+            for (mname, params, body, mline) in methods:
+                mdict[mname] = LazFunction(mname, params, body, env)
+            env.declare(name, LazClass(name, mdict, parent))
+            return None
+
+        if kind == 'importe':
+            _, path, line = stmt
+            full = path if os.path.isabs(path) else os.path.join(self.base_dir, path)
+            full = os.path.abspath(full)
+            if full in self.imported:
+                return None
+            self.imported.add(full)
+            try:
+                with open(full, 'r', encoding='utf-8') as f:
+                    src = f.read()
+            except FileNotFoundError:
+                raise LazError(f"importe : fichier introuvable : {path}", line)
+            tokens = tokenize(src)
+            ast = Parser(tokens).parse_program()
+            self.exec_block(ast, self.globals)
             return None
 
         if kind == 'fonk':
@@ -739,8 +983,10 @@ class Interpreter:
             iterable = self.eval(iterable_node, env)
             if isinstance(iterable, str):
                 iterable = list(iterable)
+            if isinstance(iterable, dict):
+                iterable = list(iterable.keys())
             if not isinstance(iterable, list):
-                raise LazError("« pou ... dan ... » demande une liste, un intervalle (1..10) ou un texte", line)
+                raise LazError("« pou ... dan ... » demande une liste, un intervalle (1..10), un texte ou un dictionnaire", line)
             env.declare(var, None)
             for item in iterable:
                 env.vars[var] = item
@@ -785,6 +1031,26 @@ class Interpreter:
             return env.get(node[1], node[2])
         if kind == 'list':
             return [self.eval(item, env) for item in node[1]]
+        if kind == 'dict':
+            _, pairs, line = node
+            d = {}
+            for (knode, vnode) in pairs:
+                k = self.eval(knode, env)
+                if isinstance(k, bool) or not isinstance(k, (str, int, float)):
+                    raise LazError("les clés d'un dictionnaire doivent être des textes ou des nombres", line)
+                d[k] = self.eval(vnode, env)
+            return d
+        if kind == 'attr':
+            _, obj_node, name, line = node
+            obj = self.eval(obj_node, env)
+            if isinstance(obj, LazInstance):
+                if name in obj.fields:
+                    return obj.fields[name]
+                m = obj.klass.find_method(name)
+                if m is not None:
+                    return BoundMethod(m, obj)
+                raise LazError(f"« {name} » n'existe pas dans cet objet de klas {obj.klass.name}", line)
+            raise LazError(f"le point (.{name}) s'utilise sur un objet créé avec une klas", line)
 
         if kind == 'range':
             _, start_node, end_node, line = node
@@ -865,8 +1131,14 @@ class Interpreter:
             _, target_node, index_node, line = node
             target = self.eval(target_node, env)
             index = self.eval(index_node, env)
+            if isinstance(target, dict):
+                if isinstance(index, bool) or not isinstance(index, (str, int, float)):
+                    raise LazError("les clés d'un dictionnaire doivent être des textes ou des nombres", line)
+                if index not in target:
+                    raise LazError(f"la clé « {to_text(index)} » n'existe pas dans le dictionnaire", line)
+                return target[index]
             if not isinstance(target, (list, str)):
-                raise LazError("on ne peut indexer que les listes et les textes", line)
+                raise LazError("on ne peut indexer que les listes, les textes et les dictionnaires", line)
             idx = int(check_number(index, line, "l'indexation"))
             if idx < -len(target) or idx >= len(target):
                 raise LazError(f"position {idx} hors limites (taille {len(target)})", line)
@@ -885,18 +1157,43 @@ class Interpreter:
                     raise LazError(
                         f"la fonction « {callee.name} » attend {len(callee.params)} argument(s), reçu {len(args)}",
                         line)
-                call_env = Env(parent=callee.env)
-                for param, arg in zip(callee.params, args):
-                    call_env.declare(param, arg)
-                try:
-                    self.exec_block(callee.body, call_env)
-                except ReturnEx as ret:
-                    return ret.value
-                return None
+                return self.call_function(callee, args)
+
+            if isinstance(callee, BoundMethod):
+                fn = callee.fn
+                expected = len(fn.params) - 1
+                if len(args) != expected:
+                    raise LazError(
+                        f"la fonction « {fn.name} » attend {expected} argument(s), reçu {len(args)}", line)
+                return self.call_function(fn, [callee.instance] + args)
+
+            if isinstance(callee, LazClass):
+                inst = LazInstance(callee)
+                init = callee.find_method('init')
+                if init is not None:
+                    expected = len(init.params) - 1
+                    if len(args) != expected:
+                        raise LazError(
+                            f"la klas « {callee.name} » attend {expected} argument(s) pour init, reçu {len(args)}", line)
+                    self.call_function(init, [inst] + args)
+                elif args:
+                    raise LazError(
+                        f"la klas « {callee.name} » n'a pas de fonction init : on l'appelle sans argument", line)
+                return inst
 
             raise LazError(f"« {to_text(callee)} » n'est pas une fonction", line)
 
         raise LazError(f"expression inconnue : {kind}")
+
+    def call_function(self, fn, args):
+        call_env = Env(parent=fn.env)
+        for param, arg in zip(fn.params, args):
+            call_env.declare(param, arg)
+        try:
+            self.exec_block(fn.body, call_env)
+        except ReturnEx as ret:
+            return ret.value
+        return None
 
 # ============================================================
 #  POINT D'ENTRÉE
@@ -904,7 +1201,7 @@ class Interpreter:
 
 BANNER = """
   ╔═══════════════════════════════════════════╗
-  ║   LAZARUS v1.0 — le langage de Ladji      ║
+  ║   LAZARUS v2.0 — le langage de Ladji      ║
   ║   Tape ton code, ou « sortir » pour quitter ║
   ╚═══════════════════════════════════════════╝
 """
@@ -953,6 +1250,7 @@ def run_file(path):
         sys.exit(1)
 
     interp = Interpreter()
+    interp.base_dir = os.path.dirname(os.path.abspath(path)) or '.'
     try:
         interp.run(source)
     except LazError as e:
@@ -963,6 +1261,12 @@ def run_file(path):
         sys.exit(1)
 
 def main():
+    # Correctif accents : force l'affichage UTF-8 (notamment sur Windows)
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+        sys.stderr.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
     if len(sys.argv) > 1:
         run_file(sys.argv[1])
     else:

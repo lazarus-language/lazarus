@@ -1,4 +1,4 @@
-# LAZARUS — Le guide du langage
+# LAZARUS — Le guide du langage (v2.0)
 
 **LAZARUS** est un langage de programmation créé par **Ladji** (2026).
 Sa philosophie : la simplicité de Python + la structure de Java, avec des mots-clés uniques.
@@ -214,6 +214,15 @@ vox(tri(notes))          # liste triée
 | `koupe(t, sep)` | Découper un texte en liste | `koupe("a,b", ",")` → `["a", "b"]` |
 | `tri(liste)` | Trier une liste | `tri([3, 1, 2])` → `[1, 2, 3]` |
 | `tip(x)` | Type d'une valeur | `tip(42)` → `"nombre"` |
+| `cles(d)` *(v2)* | Clés d'un dictionnaire | `cles(d)` → `["nom", "age"]` |
+| `valeurs(d)` *(v2)* | Valeurs d'un dictionnaire | `valeurs(d)` → `["Ladji", 25]` |
+| `contient(c, x)` *(v2)* | x est-il dans le texte/liste/dico ? | `contient("laz", "a")` → `vrai` |
+| `colle(liste, sep)` *(v2)* | Assembler une liste en texte | `colle(["a","b"], "-")` → `"a-b"` |
+| `remplace(t, a, b)` *(v2)* | Remplacer dans un texte | `remplace("java", "j", "l")` |
+| `lis_fichier(chemin)` *(v2)* | Lire un fichier texte | `lis_fichier("notes.txt")` |
+| `ecris_fichier(chemin, t)` *(v2)* | Écrire (écraser) un fichier | `ecris_fichier("s.txt", "yo")` |
+| `ajoute_fichier(chemin, t)` *(v2)* | Ajouter à la fin d'un fichier | `ajoute_fichier("s.txt", "!")` |
+| `fichier_existe(chemin)` *(v2)* | Le fichier existe-t-il ? | → `vrai` / `faux` |
 
 ---
 
@@ -234,6 +243,9 @@ vox(tri(notes))          # liste triée
 | `vrai` / `faux` | `True` / `False` | `true` / `false` |
 | `walu` | `None` | `null` |
 | `et` / `ou` / `non` | `and` / `or` / `not` | `&&` / `\|\|` / `!` |
+| `klas` *(v2)* | `class` | `class` |
+| `herite` *(v2)* | `class A(B)` | `extends` |
+| `importe` *(v2)* | `import` | `import` |
 
 ---
 
@@ -274,4 +286,101 @@ LAZARUS parle français quand quelque chose ne va pas :
 
 ---
 
-*LAZARUS v1.0 — créé par Ladji, propulsé par un interpréteur Python.*
+# Les nouveautés de LAZARUS 2.0
+
+## 12. Les dictionnaires
+
+Un dictionnaire associe des **clés** à des **valeurs** (comme un annuaire) :
+
+```lazarus
+laz personne = { "nom": "Ladji", "age": 25 }
+
+vox(personne["nom"])          # Ladji
+personne["pays"] = "France"   # ajouter ou modifier une clé
+vox(taille(personne))         # 3
+vox(cles(personne))           # ["nom", "age", "pays"]
+vox(contient(personne, "nom")) # vrai
+retire(personne, "age")       # retirer une clé
+
+pou cle dan personne {        # parcourir les clés
+    vox(cle, "=", personne[cle])
+}
+```
+
+Les clés sont des textes ou des nombres. Les valeurs peuvent être n'importe quoi — même d'autres dictionnaires ou des listes.
+
+## 13. Les classes et les objets — `klas`
+
+Une `klas` est un moule pour fabriquer des **objets**. La fonction spéciale `init` construit l'objet, et `moi` désigne l'objet lui-même (comme `self` en Python ou `this` en Java) :
+
+```lazarus
+klas Animal {
+    fonk init(moi, nom, cri) {
+        moi.nom = nom
+        moi.cri = cri
+    }
+    fonk parler(moi) {
+        vox(moi.nom, "dit :", moi.cri)
+    }
+}
+
+laz rex = Animal("Rex", "Wouf !")
+rex.parler()          # Rex dit : Wouf !
+vox(rex.nom)          # accès direct aux propriétés
+rex.nom = "Rexou"     # modification
+vox(tip(rex))         # Animal
+```
+
+### L'héritage — `herite`
+
+Une klas peut hériter d'une autre : elle reçoit toutes ses fonctions.
+
+```lazarus
+klas Chien herite Animal {
+    fonk init(moi, nom) {
+        moi.nom = nom
+        moi.cri = "Wouf wouf !"
+    }
+    fonk creuser(moi) {
+        vox(moi.nom, "creuse un trou !")
+    }
+}
+
+laz medor = Chien("Médor")
+medor.parler()    # fonction héritée d'Animal
+medor.creuser()   # fonction de Chien
+```
+
+## 14. Importer des fichiers — `importe`
+
+Découpez vos grands programmes en plusieurs fichiers :
+
+```lazarus
+# --- outils.laz ---
+fonk double(x) {
+    rend x * 2
+}
+
+# --- principal.laz ---
+importe "outils.laz"
+vox(double(21))    # 42
+```
+
+Le chemin est relatif au fichier qui importe. Un fichier n'est jamais importé deux fois. *(Disponible avec l'interpréteur Python ; pas dans le playground web.)*
+
+## 15. Lire et écrire des fichiers
+
+```lazarus
+ecris_fichier("journal.txt", "Jour 1 : j'ai créé un langage.")
+ajoute_fichier("journal.txt", "\nJour 2 : le monde l'utilise.")
+
+kan fichier_existe("journal.txt") {
+    vox(lis_fichier("journal.txt"))
+}
+```
+
+*(Dans le playground web, les fichiers sont virtuels : ils existent tant que la page est ouverte.)*
+
+---
+
+*LAZARUS v2.0 — créé par Ladji, propulsé par un interpréteur Python et un moteur JavaScript.*
