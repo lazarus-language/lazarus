@@ -1,0 +1,55 @@
+# ============================================================
+#  DEMO_V4.LAZ — Interpolation {nom} et essaie/rattrape
+# ============================================================
+
+vox("===== 1. Interpolation {variable} =====")
+laz nom = "Ladji"
+laz age = 25
+laz langage = "LAZARUS"
+
+vox("Salut {nom}, tu as {age} ans !")
+vox("Le langage {langage} interpole tout seul.")
+vox("Dans un an : {age} + 1 ans... euh, on garde les accolades doubles : {{comme ceci}}")
+
+laz score = 0
+pou i dan 1..3 {
+    score += i * 10
+    vox("Tour {i} : ton score est {score}")
+}
+
+vox("")
+vox("===== 2. essaie / rattrape =====")
+essaie {
+    laz x = nombre("pas-un-nombre")
+    vox("On ne verra jamais cette ligne")
+} rattrape probleme {
+    vox("Erreur rattrapée : {probleme}")
+}
+
+essaie {
+    laz l = [1, 2, 3]
+    vox(l[99])
+} rattrape souci {
+    vox("Encore rattrapée : {souci}")
+}
+
+# Et le programme continue comme si de rien n'était !
+vox("Le programme n'a jamais planté.")
+
+vox("")
+vox("===== 3. echoue : lève tes propres erreurs =====")
+fonk retirer_argent(solde, montant) {
+    kan montant > solde {
+        echoue("solde insuffisant : il te manque " + texte(montant - solde) + " F")
+    }
+    rend solde - montant
+}
+
+essaie {
+    laz solde = retirer_argent(100, 250)
+} rattrape err {
+    vox("La banque dit : {err}")
+}
+
+vox("")
+vox("LAZARUS 4.0 : un langage qui ne s'écroule plus jamais.")

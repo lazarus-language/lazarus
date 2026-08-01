@@ -1,6 +1,6 @@
 # LAZARUS
 
-**Le langage de programmation créé par Ladji** — la structure de Java, la simplicité de Python, et des mots-clés uniques au monde. **Version 3.1** : le mode dessin (toile en direct dans le navigateur, export SVG), la couleur dans le terminal, les raccourcis `+=`, plus les classes, dictionnaires, modules et fichiers.
+**Le langage de programmation créé par Ladji** — la structure de Java, la simplicité de Python, et des mots-clés uniques au monde. **Version 4.0** : un traducteur vers Python (vitesse ×50), l'interpolation `"Salut {nom}"`, la gestion d'erreurs `essaie/rattrape`, le mode dessin, la couleur, les classes et les dictionnaires.
 
 *A programming language created by Ladji — Java's structure, Python's simplicity, and one-of-a-kind keywords. French-friendly error messages. See the [English section](#-english) below.*
 
@@ -54,6 +54,9 @@ python3 lazarus.py exemples/demo.laz
 | `vox_couleur("Gagné !", "vert")` *(v3)* | affichage en couleur |
 | `score += 10` *(v3)* | raccourcis `+=` `-=` `*=` `/=` |
 | `toile(400, 300)` + `trace_cercle(...)` *(v3.1)* | mode dessin, export SVG |
+| `vox("Salut {nom}")` *(v4)* | interpolation |
+| `essaie { } rattrape err { }` *(v4)* | gestion d'erreurs |
+| `lazarus --traduire prog.laz` *(v4)* | traduction en Python, ×50 plus rapide |
 
 - Accolades `{ }` pour les blocs, **pas** de point-virgules
 - Listes : `[1, 2, 3]`, intervalle : `1..10`, dictionnaires : `{ "a": 1 }`

@@ -1,4 +1,4 @@
-# LAZARUS — Le guide du langage (v3.1)
+# LAZARUS — Le guide du langage (v4.0)
 
 **LAZARUS** est un langage de programmation créé par **Ladji** (2026).
 Sa philosophie : la simplicité de Python + la structure de Java, avec des mots-clés uniques.
@@ -446,6 +446,61 @@ Les couleurs sont les mêmes que `vox_couleur`, plus les codes
 boucles — `pou i dan 1..20 { cercle_plein(i * 20, 100, 5, "cyan") }` —
 et regarde la magie opérer.
 
+# Les nouveautés de LAZARUS 4.0
+
+## 19. L'interpolation — `"Salut {nom}"`
+
+Fini les longs `"Salut " + nom + " !"` : mets simplement la variable
+entre accolades dans ton texte :
+
+```lazarus
+laz nom = "Ladji"
+laz age = 25
+vox("Salut {nom}, tu as {age} ans !")
+```
+
+Pour afficher de vraies accolades, double-les : `"{{comme ceci}}"`.
+Une variable inconnue reste telle quelle (pas d'erreur).
+
+## 20. Les erreurs apprivoisées — `essaie` / `rattrape`
+
+Un programme sérieux ne s'écroule pas : il rattrape ses erreurs.
+
+```lazarus
+essaie {
+    laz x = nombre(demand("Un nombre ? "))
+    vox("Le double est {x} fois 2 :", x * 2)
+} rattrape probleme {
+    vox("Ce n'était pas un nombre ! Détail : {probleme}")
+}
+vox("Et la vie continue.")
+```
+
+Et `echoue()` te permet de lever tes propres erreurs :
+
+```lazarus
+fonk retirer(solde, montant) {
+    kan montant > solde {
+        echoue("solde insuffisant !")
+    }
+    rend solde - montant
+}
+```
+
+## 21. Le traducteur — la vitesse Python ⚡
+
+Ton programme LAZARUS peut devenir un **vrai fichier Python**, 10 à 50×
+plus rapide :
+
+```bash
+lazarus --traduire mon_programme.laz     # crée mon_programme.py
+python mon_programme.py                  # exécution turbo
+```
+
+Mesuré sur fibonacci(26) : 4,4 secondes interprété → **0,08 seconde**
+traduit. Accélération ×55. Le fichier généré a besoin du package
+`lazarus-lang` installé (pip install lazarus-lang).
+
 ---
 
-*LAZARUS v3.1 — créé par Ladji, propulsé par un interpréteur Python et un moteur JavaScript.*
+*LAZARUS v4.0 — créé par Ladji, propulsé par un interpréteur Python, un moteur JavaScript et un traducteur.*

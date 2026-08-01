@@ -241,7 +241,7 @@
 <header>
   <div class="logo">LAZARUS</div>
   <div class="tagline">Le langage de programmation créé par <b>Ladji</b> — accolades comme Java, simplicité de Python, mots-clés uniques.</div>
-  <div class="version">v3.1</div>
+  <div class="version">v4.0</div>
 </header>
 
 <div class="toolbar">
@@ -258,6 +258,7 @@
     <option value="dico">v2.0 : dictionnaires</option>
     <option value="couleurs">v3.0 : la couleur !</option>
     <option value="dessin">v3.1 : le mode dessin !</option>
+    <option value="v4">v4.0 : interpolation + essaie/rattrape</option>
   </select>
   <button id="btnClear">🗑 Effacer la console</button>
   <span class="hint">Astuce : Ctrl + Entrée pour exécuter</span>
@@ -360,13 +361,15 @@ efface_ecran · raccourcis += -=
 v3.1 : toile fond trace_ligne
 trace_rect rect_plein trace_cercle
 cercle_plein trace_texte sauve_dessin
+v4.0 : "Salut {nom}" · echoue
+essaie { } rattrape err { }
 # valeurs : vrai faux walu</pre>
     </div>
   </div>
 </details>
 
 <footer>
-  <b>LAZARUS v3.1</b> — créé par Ladji · Un langage libre et gratuit, pour tout le monde · <a href="https://github.com/lazarus-language/lazarus" style="color:#f0b429">GitHub</a> · pip install lazarus-lang
+  <b>LAZARUS v4.0</b> — créé par Ladji · Un langage libre et gratuit, pour tout le monde · <a href="https://github.com/lazarus-language/lazarus" style="color:#f0b429">GitHub</a> · pip install lazarus-lang
 </footer>
 
 <script>
@@ -400,7 +403,7 @@ const Lazarus = (function () {
   // ---------------- LEXER ----------------
   const KEYWORDS = new Set(['laz', 'fonk', 'rend', 'kan', 'sinon', 'tanke', 'pou', 'dan',
     'vrai', 'faux', 'walu', 'et', 'ou', 'non', 'kase', 'swiv',
-    'klas', 'herite', 'importe']);
+    'klas', 'herite', 'importe', 'essaie', 'rattrape']);
   const TWO_CHAR = new Set(['==', '!=', '<=', '>=', '&&', '||', '..', '+=', '-=', '*=', '/=']);
   const ONE_CHAR = new Set(['+', '-', '*', '/', '%', '<', '>', '=', '(', ')',
     '{', '}', '[', ']', ',', '!', ';', '.', ':']);
@@ -616,6 +619,15 @@ const Lazarus = (function () {
         }
         this.next();
         return ['importe', tok2[1], line];
+      }
+
+      if (this.accept('ESSAIE')) {
+        const body = this.parseBlock();
+        this.skipNewlines();
+        this.expect('RATTRAPE', undefined, 'rattrape');
+        const errname = this.expect('IDENT', undefined, "un nom pour l'erreur (ex : rattrape probleme { ... })")[1];
+        const handler = this.parseBlock();
+        return ['essaie', body, errname, handler, line];
       }
 
       const expr = this.parseExpression();
@@ -879,6 +891,22 @@ const Lazarus = (function () {
     if (v instanceof Map) return v.size > 0;
     return true;
   }
+  const INTERP_RE = /\{([A-Za-z_][A-Za-z0-9_]*)\}/g;
+
+  function interpolate(s, env) {
+    if (!s.includes('{')) return s;
+    let s2 = s.split('{{').join('\x00').split('}}').join('\x01');
+    s2 = s2.replace(INTERP_RE, (whole, name) => {
+      let e = env;
+      while (e) {
+        if (e.vars.has(name)) return toText(e.vars.get(name));
+        e = e.parent;
+      }
+      return whole;
+    });
+    return s2.split('\x00').join('{').split('\x01').join('}');
+  }
+
   function checkNumber(v, line, contexte) {
     if (typeof v !== 'number' || Number.isNaN(v)) {
       throw new LazError(`${(contexte || 'cette opération')} demande un nombre, pas « ${toText(v)} »`, line);
@@ -1182,6 +1210,12 @@ const Lazarus = (function () {
         self.fs.set(toText(args[0]), svgDuDessin(t));
         return null;
       });
+
+      // --- nouveautés v4.0 ---
+      B('echoue', async (args, line) => {
+        self.need(args, 1, 'echoue', line);
+        throw new LazError(toText(args[0]), line);
+      });
     }
 
     async run(source) {
@@ -1256,6 +1290,20 @@ const Lazarus = (function () {
       if (kind === 'importe') {
         throw new LazError("importe n'est pas disponible dans le playground web — utilise la version Python (pip install lazarus-lang)", stmt[2]);
       }
+      if (kind === 'essaie') {
+        const [, body, errname, handler] = stmt;
+        try {
+          await this.execBlock(body, env);
+        } catch (e) {
+          if (e instanceof LazError) {
+            env.declare(errname, e.lazMessage);
+            await this.execBlock(handler, env);
+          } else {
+            throw e;
+          }
+        }
+        return null;
+      }
       if (kind === 'fonk') {
         env.declare(stmt[1], new LazFunction(stmt[1], stmt[2], stmt[3], env));
         return null;
@@ -1315,7 +1363,8 @@ const Lazarus = (function () {
       const kind = node[0];
       this.tick();
 
-      if (kind === 'num' || kind === 'str' || kind === 'bool') return node[1];
+      if (kind === 'num' || kind === 'bool') return node[1];
+      if (kind === 'str') return interpolate(node[1], env);
       if (kind === 'walu') return null;
       if (kind === 'var') return env.get(node[1], node[2]);
       if (kind === 'list') {
@@ -1772,6 +1821,40 @@ trace_rect(100, 195, 20, 20, "cyan")     # la fenêtre
 trace_texte(240, 245, "Dessiné en LAZARUS !", "cyan")
 vox("À toi de dessiner ! Change les formes et ré-exécute.")
 `;
+  EX.v4 = `# ===== v4.0 : interpolation + essaie/rattrape =====
+
+# Fini les longs " + nom + " : mets la variable entre accolades !
+laz nom = "Ladji"
+laz age = 25
+vox("Salut {nom}, tu as {age} ans !")
+
+laz score = 0
+pou i dan 1..3 {
+    score += i * 10
+    vox("Tour {i} : score {score}")
+}
+
+# essaie/rattrape : le programme ne plante plus jamais
+essaie {
+    laz x = nombre("pas-un-nombre")
+} rattrape probleme {
+    vox_couleur("Erreur rattrapée : {probleme}", "rouge")
+}
+vox_couleur("Et le programme continue !", "vert")
+
+# echoue() : lève tes propres erreurs
+fonk verifier_age(a) {
+    kan a < 0 {
+        echoue("un âge négatif ? Impossible !")
+    }
+    rend "âge valide : " + texte(a)
+}
+essaie {
+    vox(verifier_age(-5))
+} rattrape err {
+    vox_couleur("Contrôle : {err}", "jaune")
+}
+`;
   EX.etoiles = `# ===== Pyramide d'étoiles =====
 laz hauteur = 7
 
@@ -1983,7 +2066,7 @@ vox("LAZARUS !")
     toileCtx = null;
   });
 
-  addLine('Bienvenue dans LAZARUS v3.1 ! Clique sur ▶ Exécuter, ou charge un exemple — essaie « la couleur » !', 'sys');
+  addLine('Bienvenue dans LAZARUS v4.0 ! Clique sur ▶ Exécuter, ou charge un exemple — essaie « la couleur » !', 'sys');
 })();
 </script>
 

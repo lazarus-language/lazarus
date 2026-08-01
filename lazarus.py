@@ -40,7 +40,9 @@ Utilisation :
 
 import sys
 import os
+import re
 import random
+import keyword as _pykeyword
 
 # ============================================================
 #  ERREURS
@@ -75,6 +77,7 @@ KEYWORDS = {
     'laz', 'fonk', 'rend', 'kan', 'sinon', 'tanke', 'pou', 'dan',
     'vrai', 'faux', 'walu', 'et', 'ou', 'non', 'kase', 'swiv',
     'klas', 'herite', 'importe',
+    'essaie', 'rattrape',
 }
 
 TWO_CHAR_OPS = {'==', '!=', '<=', '>=', '&&', '||', '..', '+=', '-=', '*=', '/='}
@@ -340,6 +343,14 @@ class Parser:
                 raise LazError('importe demande un nom de fichier entre guillemets : importe "outils.laz"', line)
             self.next()
             return ('importe', tok2[1], line)
+
+        if self.accept('ESSAIE'):
+            body = self.parse_block()
+            self.skip_newlines()
+            self.expect('RATTRAPE', what='rattrape')
+            errname = self.expect('IDENT', what="un nom pour l'erreur (ex : rattrape probleme { ... })")[1]
+            handler = self.parse_block()
+            return ('essaie', body, errname, handler, line)
 
         # expression ou affectation
         expr = self.parse_expression()
@@ -648,6 +659,25 @@ def is_truthy(value):
         return len(value) > 0
     return True
 
+INTERP_RE = re.compile(r'\{([A-Za-z_][A-Za-z0-9_]*)\}')
+
+def interpolate(s, env):
+    """Interpolation v4.0 : "Salut {nom}" remplace {nom} par la variable.
+    {{ et }} donnent des accolades littérales ; une variable inconnue reste telle quelle."""
+    if '{' not in s:
+        return s
+    s2 = s.replace('{{', '\x00').replace('}}', '\x01')
+    def rep(m):
+        name = m.group(1)
+        e = env
+        while e is not None:
+            if name in e.vars:
+                return to_text(e.vars[name])
+            e = e.parent
+        return m.group(0)
+    s2 = INTERP_RE.sub(rep, s2)
+    return s2.replace('\x00', '{').replace('\x01', '}')
+
 def check_number(value, line, contexte='cette opération'):
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise LazError(f"{contexte} demande un nombre, pas « {to_text(value)} »", line)
@@ -765,7 +795,8 @@ def make_builtins(env):
         if isinstance(v, LazInstance): return v.klass.name
         if isinstance(v, LazClass): return 'klas'
         if isinstance(v, (LazFunction, BoundMethod)): return 'fonk'
-        return 'inconnu'
+        if callable(v): return 'fonk'
+        return type(v).__name__  # objets des programmes traduits en Python
 
     def b_cles(args, line):
         _need(args, 1, 'cles', line)
@@ -866,6 +897,10 @@ def make_builtins(env):
     def b_efface_ecran(args, line):
         print('\033[2J\033[H', end='')
         return None
+
+    def b_echoue(args, line):
+        _need(args, 1, 'echoue', line)
+        raise LazError(to_text(args[0]), line)
 
     # --- nouveautés v3.1 : le mode dessin ! ---
     # Les commandes s'accumulent, puis sauve_dessin() écrit une image SVG.
@@ -1035,6 +1070,8 @@ def make_builtins(env):
         'cercle_plein': b_cercle_plein,     # cercle (rempli)
         'trace_texte': b_trace_texte,       # écrire sur le dessin
         'sauve_dessin': b_sauve_dessin,     # sauvegarder en image SVG
+        # --- nouveautés v4.0 ---
+        'echoue': b_echoue,                 # lever sa propre erreur (avec essaie/rattrape)
     }
     for name, fn in builtins.items():
         env.declare(name, ('builtin', name, fn))
@@ -1111,6 +1148,15 @@ class Interpreter:
             for (mname, params, body, mline) in methods:
                 mdict[mname] = LazFunction(mname, params, body, env)
             env.declare(name, LazClass(name, mdict, parent))
+            return None
+
+        if kind == 'essaie':
+            _, body, errname, handler, line = stmt
+            try:
+                self.exec_block(body, env)
+            except LazError as e:
+                env.declare(errname, e.message)
+                self.exec_block(handler, env)
             return None
 
         if kind == 'importe':
@@ -1198,7 +1244,7 @@ class Interpreter:
         if kind == 'num':
             return node[1]
         if kind == 'str':
-            return node[1]
+            return interpolate(node[1], env)
         if kind == 'bool':
             return node[1]
         if kind == 'walu':
@@ -1372,6 +1418,366 @@ class Interpreter:
         return None
 
 # ============================================================
+#  RUNTIME POUR LES PROGRAMMES TRADUITS (v4.0)
+# ============================================================
+
+def runtime():
+    """Retourne les fonctions intégrées de LAZARUS, utilisables par
+    les fichiers Python générés par « lazarus --traduire »."""
+    env = Env()
+    make_builtins(env)
+    return {k: v[2] for k, v in env.vars.items()}
+
+BUILTIN_NAMES = frozenset(runtime().keys())
+
+# ============================================================
+#  TRADUCTEUR LAZARUS -> PYTHON (v4.0)
+# ============================================================
+
+PRELUDE_PY = '''# Fichier généré par LAZARUS v4.0 (lazarus --traduire)
+# Modifie plutôt le fichier .laz d'origine, puis re-traduis.
+from lazarus import to_text as _s, is_truthy as _t, LazError, runtime as _runtime
+_b = _runtime()
+
+def _add(a, b):
+    if isinstance(a, str) or isinstance(b, str):
+        return _s(a) + _s(b)
+    return a + b
+
+def _div(a, b):
+    if b == 0:
+        raise LazError('division par zéro impossible')
+    r = a / b
+    return int(r) if isinstance(r, float) and r.is_integer() else r
+
+def _mod(a, b):
+    if b == 0:
+        raise LazError('modulo par zéro impossible')
+    return a % b
+
+def _rng(a, b):
+    a, b = int(a), int(b)
+    pas = 1 if b >= a else -1
+    return list(range(a, b + pas, pas))
+
+def _iter(x):
+    if isinstance(x, str):
+        return list(x)
+    if isinstance(x, dict):
+        return list(x.keys())
+    return x
+
+def _idx(t, i):
+    if isinstance(t, dict):
+        if i not in t:
+            raise LazError("la clé « " + _s(i) + " » n'existe pas dans le dictionnaire")
+        return t[i]
+    i = int(i)
+    if i < -len(t) or i >= len(t):
+        raise LazError('position ' + _s(i) + ' hors limites (taille ' + _s(len(t)) + ')')
+    return t[i]
+
+def _setidx(t, i, v):
+    if isinstance(t, dict):
+        t[i] = v
+    else:
+        t[int(i)] = v
+
+'''
+
+RESERVES_TRAD = frozenset(['_s', '_t', '_b', '_add', '_div', '_mod', '_rng',
+                           '_iter', '_idx', '_setidx', 'LazError'])
+
+class Traducteur:
+    def __init__(self, base_dir='.'):
+        self.lines = []
+        self.indent = 0
+        self.declared = set()
+        self.module_names = set()
+        self.base_dir = base_dir
+        self.imported = set()
+
+    # ---------- utilitaires ----------
+
+    def em(self, text=''):
+        self.lines.append('    ' * self.indent + text if text else '')
+
+    def nom(self, name):
+        if _pykeyword.iskeyword(name) or name in RESERVES_TRAD:
+            return name + '_laz'
+        return name
+
+    def collecte(self, stmts):
+        """Repère tous les noms définis par le programme (variables, fonctions...)."""
+        for s in stmts:
+            k = s[0]
+            if k == 'declare':
+                self.declared.add(s[1])
+            elif k == 'assign':
+                self.declared.add(s[1])
+            elif k == 'fonk':
+                self.declared.add(s[1])
+                self.declared.update(s[2])
+                self.collecte(s[3][1])
+            elif k == 'klas':
+                self.declared.add(s[1])
+                for (mn, params, body, ml) in s[3]:
+                    self.declared.update(params)
+                    self.collecte(body[1])
+            elif k == 'pou':
+                self.declared.add(s[1])
+                self.collecte(s[3][1])
+            elif k == 'tanke':
+                self.collecte(s[2][1])
+            elif k == 'kan':
+                self.collecte(s[2][1])
+                if s[3]:
+                    self.collecte(s[3][1])
+            elif k == 'essaie':
+                self.declared.add(s[2])
+                self.collecte(s[1][1])
+                self.collecte(s[3][1])
+
+    def assignations(self, stmts, trouves):
+        """Noms assignés (sans laz) dans un corps de fonction, hors fonctions imbriquées."""
+        for s in stmts:
+            k = s[0]
+            if k == 'assign':
+                trouves.add(s[1])
+            elif k in ('kan',):
+                self.assignations(s[2][1], trouves)
+                if s[3]:
+                    self.assignations(s[3][1], trouves)
+            elif k == 'tanke':
+                self.assignations(s[2][1], trouves)
+            elif k == 'pou':
+                self.assignations(s[3][1], trouves)
+            elif k == 'essaie':
+                self.assignations(s[1][1], trouves)
+                self.assignations(s[3][1], trouves)
+
+    def locales(self, stmts, trouves):
+        """Noms déclarés avec laz dans un corps, hors fonctions imbriquées."""
+        for s in stmts:
+            k = s[0]
+            if k == 'declare':
+                trouves.add(s[1])
+            elif k == 'kan':
+                self.locales(s[2][1], trouves)
+                if s[3]:
+                    self.locales(s[3][1], trouves)
+            elif k == 'tanke':
+                self.locales(s[2][1], trouves)
+            elif k == 'pou':
+                trouves.add(s[1])
+                self.locales(s[3][1], trouves)
+            elif k == 'essaie':
+                trouves.add(s[2])
+                self.locales(s[1][1], trouves)
+                self.locales(s[3][1], trouves)
+
+    # ---------- expressions ----------
+
+    def chaine(self, s):
+        if '{' not in s:
+            return repr(s)
+        s2 = s.replace('{{', '\x00').replace('}}', '\x01')
+        def rep(m):
+            name = m.group(1)
+            if name in self.declared:
+                return '\x02' + self.nom(name) + '\x03'
+            return m.group(0)
+        s2 = INTERP_RE.sub(rep, s2)
+        s2 = s2.replace('\x00', '{').replace('\x01', '}')
+        if '\x02' not in s2:
+            return repr(s2)
+        s3 = s2.replace('{', '{{').replace('}', '}}')
+        s3 = s3.replace('\x02', '{_s(').replace('\x03', ')}')
+        return 'f' + repr(s3)
+
+    def expr(self, node):
+        k = node[0]
+        if k == 'num':
+            return repr(node[1])
+        if k == 'str':
+            return self.chaine(node[1])
+        if k == 'bool':
+            return 'True' if node[1] else 'False'
+        if k == 'walu':
+            return 'None'
+        if k == 'var':
+            return self.nom(node[1])
+        if k == 'list':
+            return '[' + ', '.join(self.expr(i) for i in node[1]) + ']'
+        if k == 'dict':
+            return '{' + ', '.join(f'{self.expr(kk)}: {self.expr(vv)}' for kk, vv in node[1]) + '}'
+        if k == 'range':
+            return f'_rng({self.expr(node[1])}, {self.expr(node[2])})'
+        if k == 'or':
+            return f'({self.expr(node[1])} or {self.expr(node[2])})'
+        if k == 'and':
+            return f'({self.expr(node[1])} and {self.expr(node[2])})'
+        if k == 'not':
+            return f'(not _t({self.expr(node[1])}))'
+        if k == 'neg':
+            return f'(-{self.expr(node[1])})'
+        if k == 'cmp':
+            return f'({self.expr(node[2])} {node[1]} {self.expr(node[3])})'
+        if k == 'binop':
+            op, a, b = node[1], self.expr(node[2]), self.expr(node[3])
+            if op == '+':
+                return f'_add({a}, {b})'
+            if op == '/':
+                return f'_div({a}, {b})'
+            if op == '%':
+                return f'_mod({a}, {b})'
+            return f'({a} {op} {b})'
+        if k == 'index':
+            return f'_idx({self.expr(node[1])}, {self.expr(node[2])})'
+        if k == 'attr':
+            return f'{self.expr(node[1])}.{self.nom(node[2])}'
+        if k == 'call':
+            callee = node[1]
+            args = ', '.join(self.expr(a) for a in node[2])
+            if callee[0] == 'var' and callee[1] in BUILTIN_NAMES and callee[1] not in self.declared:
+                liste = '[' + args + ']'
+                return f'_b[{callee[1]!r}]({liste}, {node[3]})'
+            return f'{self.expr(callee)}({args})'
+        raise LazError(f'traduction impossible pour : {k}')
+
+    # ---------- instructions ----------
+
+    def emit_block(self, block, extra=None):
+        self.indent += 1
+        if extra:
+            for ligne in extra:
+                self.em(ligne)
+        if not block[1] and not extra:
+            self.em('pass')
+        for s in block[1]:
+            self.stmt(s)
+        self.indent -= 1
+
+    def emit_kan(self, s, prefix='if'):
+        _, cond, body, elseb, line = s
+        self.em(f'{prefix} _t({self.expr(cond)}):')
+        self.emit_block(body)
+        if elseb:
+            stmts = elseb[1]
+            if len(stmts) == 1 and stmts[0][0] == 'kan':
+                self.emit_kan(stmts[0], 'elif')
+            else:
+                self.em('else:')
+                self.emit_block(elseb)
+
+    def globales_de(self, body, params):
+        assignes, locs = set(), set(params)
+        self.assignations(body[1], assignes)
+        self.locales(body[1], locs)
+        besoins = sorted((assignes - locs) & self.module_names)
+        return [f'global {", ".join(self.nom(n) for n in besoins)}'] if besoins else []
+
+    def stmt(self, s):
+        k = s[0]
+        if k == 'declare' or k == 'assign':
+            self.em(f'{self.nom(s[1])} = {self.expr(s[2])}')
+            if self.indent == 0:
+                self.module_names.add(s[1])
+        elif k == 'assign_index':
+            self.em(f'_setidx({self.expr(s[1])}, {self.expr(s[2])}, {self.expr(s[3])})')
+        elif k == 'assign_attr':
+            self.em(f'{self.expr(s[1])}.{self.nom(s[2])} = {self.expr(s[3])}')
+        elif k == 'expr':
+            self.em(self.expr(s[1]))
+        elif k == 'kan':
+            self.emit_kan(s)
+        elif k == 'tanke':
+            self.em(f'while _t({self.expr(s[1])}):')
+            self.emit_block(s[2])
+        elif k == 'pou':
+            self.em(f'for {self.nom(s[1])} in _iter({self.expr(s[2])}):')
+            self.emit_block(s[3])
+        elif k == 'rend':
+            self.em(f'return {self.expr(s[1])}' if s[1] is not None else 'return')
+        elif k == 'kase':
+            self.em('break')
+        elif k == 'swiv':
+            self.em('continue')
+        elif k == 'fonk':
+            if self.indent == 0:
+                self.module_names.add(s[1])
+            params = ', '.join(self.nom(p) for p in s[2])
+            self.em(f'def {self.nom(s[1])}({params}):')
+            self.emit_block(s[3], extra=self.globales_de(s[3], s[2]))
+            self.em()
+        elif k == 'klas':
+            if self.indent == 0:
+                self.module_names.add(s[1])
+            parent = f'({self.nom(s[2])})' if s[2] else ''
+            self.em(f'class {self.nom(s[1])}{parent}:')
+            self.indent += 1
+            if not s[2]:
+                self.em('def __init__(moi, *_a):')
+                self.indent += 1
+                self.em("if hasattr(moi, 'init'):")
+                self.indent += 1
+                self.em('moi.init(*_a)')
+                self.indent -= 1
+                self.em('elif _a:')
+                self.indent += 1
+                self.em("raise LazError('cette klas n\\'a pas de fonction init')")
+                self.indent -= 2
+            for (mn, params, body, ml) in s[3]:
+                pstr = ', '.join(self.nom(p) for p in params)
+                self.em(f'def {self.nom(mn)}({pstr}):')
+                self.emit_block(body, extra=self.globales_de(body, params))
+            self.indent -= 1
+            self.em()
+        elif k == 'importe':
+            chemin = s[1] if os.path.isabs(s[1]) else os.path.join(self.base_dir, s[1])
+            chemin = os.path.abspath(chemin)
+            if chemin in self.imported:
+                return
+            self.imported.add(chemin)
+            try:
+                with open(chemin, 'r', encoding='utf-8') as f:
+                    src = f.read()
+            except FileNotFoundError:
+                raise LazError(f'importe : fichier introuvable : {s[1]}', s[2])
+            ast = Parser(tokenize(src)).parse_program()
+            self.collecte(ast[1])
+            self.em(f'# --- importé depuis {s[1]} ---')
+            for st in ast[1]:
+                self.stmt(st)
+            self.em(f'# --- fin de {s[1]} ---')
+        elif k == 'essaie':
+            self.em('try:')
+            self.emit_block(s[1])
+            self.em('except Exception as _err:')
+            self.indent += 1
+            self.em(f"{self.nom(s[2])} = getattr(_err, 'message', None) or str(_err)")
+            for st in s[3][1]:
+                self.stmt(st)
+            self.indent -= 1
+        else:
+            raise LazError(f'traduction impossible pour : {k}')
+
+    def traduire(self, source):
+        ast = Parser(tokenize(source)).parse_program()
+        self.collecte(ast[1])
+        for s in ast[1]:
+            self.stmt(s)
+        return PRELUDE_PY + '\n'.join(self.lines) + '\n'
+
+def traduire_fichier(src_path, out_path):
+    with open(src_path, 'r', encoding='utf-8') as f:
+        source = f.read()
+    base = os.path.dirname(os.path.abspath(src_path)) or '.'
+    code = Traducteur(base_dir=base).traduire(source)
+    with open(out_path, 'w', encoding='utf-8') as f:
+        f.write(code)
+
+# ============================================================
 #  POINT D'ENTRÉE
 # ============================================================
 
@@ -1446,8 +1852,29 @@ def main():
     # Activer les couleurs ANSI dans les consoles Windows
     if sys.platform == 'win32':
         os.system('')
-    if len(sys.argv) > 1:
-        run_file(sys.argv[1])
+    args = sys.argv[1:]
+    if args and args[0] in ('--traduire', '-t'):
+        if len(args) < 2:
+            print('Utilisation : lazarus --traduire programme.laz [sortie.py]')
+            sys.exit(1)
+        src = args[1]
+        if len(args) > 2:
+            out = args[2]
+        else:
+            out = (src[:-4] if src.endswith('.laz') else src) + '.py'
+        try:
+            traduire_fichier(src, out)
+        except FileNotFoundError:
+            print(f'✘ Fichier introuvable : {src}')
+            sys.exit(1)
+        except LazError as e:
+            print(e)
+            sys.exit(1)
+        print(f'✔ Traduit en Python : {out}')
+        print(f'  Exécution (10 à 50× plus rapide) : python {out}')
+        return
+    if args:
+        run_file(args[0])
     else:
         repl()
 
