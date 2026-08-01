@@ -140,6 +140,17 @@
     overflow-wrap: normal;
     overflow: auto;
   }
+  #varsPanel {
+    display: none;
+    padding: 8px 14px;
+    background: #10151d;
+    border-bottom: 1px solid var(--border);
+    font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+    font-size: .82rem;
+    color: var(--gold);
+    white-space: pre-wrap;
+  }
+  .linenos .cur { color: var(--gold); font-weight: bold; }
   #canvasWrap {
     display: none;
     padding: 12px 14px 8px;
@@ -241,7 +252,7 @@
 <header>
   <div class="logo">LAZARUS</div>
   <div class="tagline">Le langage de programmation créé par <b>Ladji</b> — accolades comme Java, simplicité de Python, mots-clés uniques.</div>
-  <div class="version">v4.0</div>
+  <div class="version">v5.0</div>
 </header>
 
 <div class="toolbar">
@@ -259,6 +270,8 @@
     <option value="couleurs">v3.0 : la couleur !</option>
     <option value="dessin">v3.1 : le mode dessin !</option>
     <option value="v4">v4.0 : interpolation + essaie/rattrape</option>
+    <option value="v5">v5.0 : garde + ralenti pédagogique</option>
+    <option value="anglais">v5.0 : coder en anglais (#langue:)</option>
   </select>
   <button id="btnClear">🗑 Effacer la console</button>
   <span class="hint">Astuce : Ctrl + Entrée pour exécuter</span>
@@ -274,6 +287,7 @@
   </div>
   <div class="pane">
     <div class="pane-title">🖥️ Console</div>
+    <div id="varsPanel"></div>
     <div id="canvasWrap"><canvas id="toileCanvas"></canvas></div>
     <div id="console"></div>
   </div>
@@ -363,13 +377,15 @@ trace_rect rect_plein trace_cercle
 cercle_plein trace_texte sauve_dessin
 v4.0 : "Salut {nom}" · echoue
 essaie { } rattrape err { }
+v5.0 : garde x = 0 (se souvient !)
+ralenti(0.5) · #langue: anglais
 # valeurs : vrai faux walu</pre>
     </div>
   </div>
 </details>
 
 <footer>
-  <b>LAZARUS v4.0</b> — créé par Ladji · Un langage libre et gratuit, pour tout le monde · <a href="https://github.com/lazarus-language/lazarus" style="color:#f0b429">GitHub</a> · pip install lazarus-lang
+  <b>LAZARUS v5.0</b> — créé par Ladji · Un langage libre et gratuit, pour tout le monde · <a href="https://github.com/lazarus-language/lazarus" style="color:#f0b429">GitHub</a> · pip install lazarus-lang
 </footer>
 
 <script>
@@ -403,7 +419,51 @@ const Lazarus = (function () {
   // ---------------- LEXER ----------------
   const KEYWORDS = new Set(['laz', 'fonk', 'rend', 'kan', 'sinon', 'tanke', 'pou', 'dan',
     'vrai', 'faux', 'walu', 'et', 'ou', 'non', 'kase', 'swiv',
-    'klas', 'herite', 'importe', 'essaie', 'rattrape']);
+    'klas', 'herite', 'importe', 'essaie', 'rattrape', 'garde']);
+
+  // v5.0 : les langues — mêmes mots-clés, dans ta langue (#langue: anglais)
+  const LANGUES = {
+    anglais: {
+      laz: 'let', fonk: 'func', rend: 'give', kan: 'when', sinon: 'else',
+      tanke: 'while', pou: 'for', dan: 'in', vrai: 'true', faux: 'false',
+      walu: 'null', et: 'and', ou: 'or', non: 'not', kase: 'stop',
+      swiv: 'next', klas: 'class', herite: 'extends', importe: 'load',
+      essaie: 'try', rattrape: 'catch', garde: 'keep',
+    },
+    bambara: { // BROUILLON à faire valider par des locuteurs natifs
+      laz: 'bila', fonk: 'baara', rend: 'segin', kan: 'ni', sinon: 'note',
+      tanke: 'foo', pou: 'ye', dan: 'la', vrai: 'tien', faux: 'galon',
+      walu: 'foyi', et: 'ani', ou: 'walima', non: 'te', kase: 'tige',
+      swiv: 'taa', klas: 'kulu', herite: 'ciden', importe: 'tala',
+      essaie: 'kekan', rattrape: 'minna', garde: 'mara',
+    },
+    wolof: { // BROUILLON à faire valider par des locuteurs natifs
+      laz: 'teg', fonk: 'liggeey', rend: 'delloo', kan: 'su', sinon: 'walla',
+      tanke: 'liye', pou: 'ngir', dan: 'ci', vrai: 'degg', faux: 'fen',
+      walu: 'dara', et: 'ak', ou: 'mbaa', non: 'du', kase: 'taxaw',
+      swiv: 'topp', klas: 'mbooloo', herite: 'donn', importe: 'yeb',
+      essaie: 'jeema', rattrape: 'japp', garde: 'denc',
+    },
+  };
+
+  const LANGUE_RE = /#\s*langue\s*:\s*([a-zA-Z]+)/i;
+
+  function detecteLangue(source) {
+    for (const l of source.split('\n').slice(0, 3)) {
+      const m = l.match(LANGUE_RE);
+      if (m) {
+        const nom = m[1].toLowerCase();
+        if (['lazarus', 'classique', 'francais', 'français'].includes(nom)) return null;
+        if (!(nom in LANGUES)) {
+          throw new LazError(`langue inconnue « ${nom} » (disponibles : lazarus, ${Object.keys(LANGUES).sort().join(', ')})`, 1);
+        }
+        const rmap = {};
+        for (const [k, v] of Object.entries(LANGUES[nom])) rmap[v] = k;
+        return rmap;
+      }
+    }
+    return null;
+  }
   const TWO_CHAR = new Set(['==', '!=', '<=', '>=', '&&', '||', '..', '+=', '-=', '*=', '/=']);
   const ONE_CHAR = new Set(['+', '-', '*', '/', '%', '<', '>', '=', '(', ')',
     '{', '}', '[', ']', ',', '!', ';', '.', ':']);
@@ -412,7 +472,7 @@ const Lazarus = (function () {
   function isAlpha(c) { return /[\p{L}_]/u.test(c); }
   function isAlnum(c) { return /[\p{L}\p{N}_]/u.test(c); }
 
-  function tokenize(source) {
+  function tokenize(source, langueMap) {
     const tokens = [];
     let i = 0, line = 1, parenDepth = 0;
     const n = source.length;
@@ -468,6 +528,7 @@ const Lazarus = (function () {
         while (i < n && isAlnum(source[i])) i++;
         const word = source.slice(start, i);
         if (KEYWORDS.has(word)) tokens.push([word.toUpperCase(), word, line]);
+        else if (langueMap && word in langueMap) tokens.push([langueMap[word].toUpperCase(), word, line]);
         else tokens.push(['IDENT', word, line]);
         continue;
       }
@@ -548,6 +609,11 @@ const Lazarus = (function () {
         const name = this.expect('IDENT', undefined, 'un nom de variable')[1];
         this.expect('OP', '=', '=');
         return ['declare', name, this.parseExpression(), line];
+      }
+      if (this.accept('GARDE')) {
+        const name = this.expect('IDENT', undefined, 'un nom de variable')[1];
+        this.expect('OP', '=', '=');
+        return ['garde', name, this.parseExpression(), line];
       }
       if (this.accept('FONK')) {
         const name = this.expect('IDENT', undefined, 'un nom de fonction')[1];
@@ -922,9 +988,28 @@ const Lazarus = (function () {
       this.io = io;
       this.fs = (io && io.fs) || new Map();
       this.dessin = null;
+      this.memoire = (io && io.memoire) || {};
+      this.gardeNoms = new Set();
+      this.vitesse = 0;
+      this.histoire = [];
       this.globals = new Env(null);
       this.steps = 0;
       this.makeBuiltins();
+    }
+
+    noteHistoire(line, name, value) {
+      this.histoire.push([line, name, toText(value)]);
+      if (this.histoire.length > 6) this.histoire.shift();
+    }
+
+    snapshot() {
+      const out = [];
+      for (const [k, v] of this.globals.vars.entries()) {
+        if (v && (v.builtin || v instanceof LazFunction || v instanceof LazClass)) continue;
+        out.push([k, toText(v)]);
+        if (out.length >= 12) break;
+      }
+      return out;
     }
 
     tick(line) {
@@ -1216,12 +1301,34 @@ const Lazarus = (function () {
         self.need(args, 1, 'echoue', line);
         throw new LazError(toText(args[0]), line);
       });
+
+      // --- nouveautés v5.0 ---
+      B('ralenti', async (args, line) => {
+        self.need(args, 1, 'ralenti', line);
+        const v = checkNumber(args[0], line, 'ralenti()');
+        self.vitesse = Math.min(3, Math.max(0, v));
+        return null;
+      });
     }
 
     async run(source) {
-      const tokens = tokenize(source);
+      const langueMap = detecteLangue(source);
+      const tokens = tokenize(source, langueMap);
       const ast = new Parser(tokens).parseProgram();
       return await this.execBlock(ast, this.globals);
+    }
+
+    collecteGarde() {
+      const jsonOk = (v) => v === null || ['number', 'string', 'boolean'].includes(typeof v)
+        || (Array.isArray(v) && v.every(jsonOk));
+      const out = {};
+      for (const n of this.gardeNoms) {
+        if (this.globals.vars.has(n)) {
+          const v = this.globals.vars.get(n);
+          if (jsonOk(v)) out[n] = v;
+        }
+      }
+      return out;
     }
 
     async execBlock(block, env) {
@@ -1235,13 +1342,32 @@ const Lazarus = (function () {
       this.tick(stmt[stmt.length - 1]);
       // laisser le navigateur respirer (bouton Arrêter, affichage) sur les gros programmes
       if ((this.steps & 8191) === 0 && this.io.onYield) await this.io.onYield();
+      // v5 : le ralenti pédagogique
+      if (this.vitesse > 0) {
+        if (this.io.onStep) await this.io.onStep(stmt[stmt.length - 1], this.snapshot(), this.vitesse * 1000);
+        else await new Promise(r => setTimeout(r, this.vitesse * 1000));
+      }
 
       if (kind === 'declare') {
-        env.declare(stmt[1], await this.eval(stmt[2], env));
+        const value = await this.eval(stmt[2], env);
+        env.declare(stmt[1], value);
+        this.noteHistoire(stmt[3], stmt[1], value);
+        return null;
+      }
+      if (kind === 'garde') {
+        const [, name, valueNode, line] = stmt;
+        this.gardeNoms.add(name);
+        let value;
+        if (Object.prototype.hasOwnProperty.call(this.memoire, name)) value = this.memoire[name];
+        else value = await this.eval(valueNode, env);
+        env.declare(name, value);
+        this.noteHistoire(line, name, value);
         return null;
       }
       if (kind === 'assign') {
-        env.assign(stmt[1], await this.eval(stmt[2], env), stmt[3]);
+        const value = await this.eval(stmt[2], env);
+        env.assign(stmt[1], value, stmt[3]);
+        this.noteHistoire(stmt[3], stmt[1], value);
         return null;
       }
       if (kind === 'assign_index') {
@@ -1595,10 +1721,16 @@ const Lazarus = (function () {
     });
     try {
       await interp.run(source);
+      if (interp.gardeNoms.size && interp.io.onSauveMemoire) {
+        interp.io.onSauveMemoire(interp.collecteGarde());
+      }
       return { ok: true };
     } catch (e) {
+      if (interp.gardeNoms.size && interp.io.onSauveMemoire) {
+        try { interp.io.onSauveMemoire(interp.collecteGarde()); } catch (e2) { }
+      }
       if (e instanceof StopEx) return { ok: false, stopped: true };
-      if (e instanceof LazError) return { ok: false, error: e.toString() };
+      if (e instanceof LazError) return { ok: false, error: e.toString(), histoire: interp.histoire };
       if (e instanceof ReturnEx) return { ok: true };
       if (e instanceof BreakEx || e instanceof ContinueEx) {
         return { ok: false, error: '✘ Erreur LAZARUS : « kase » et « swiv » ne s\'utilisent que dans une boucle' };
@@ -1855,6 +1987,47 @@ essaie {
     vox_couleur("Contrôle : {err}", "jaune")
 }
 `;
+  EX.v5 = `# ===== v5.0 : garde + ralenti =====
+
+# « garde » : une variable qui SE SOUVIENT entre les exécutions.
+# Clique plusieurs fois sur Exécuter et regarde...
+garde visites = 0
+visites += 1
+vox("Tu as exécuté ce programme {visites} fois !")
+
+# « ralenti » : le code s'exécute au ralenti, ligne par ligne.
+# Regarde les numéros de ligne s'illuminer et les variables changer !
+ralenti(0.6)
+laz total = 0
+pou i dan 1..5 {
+    total += i
+    vox("i = {i}, total = {total}")
+}
+vox_couleur("Fini ! Total : {total}", "or")
+`;
+  EX.anglais = `#langue: anglais
+# ===== v5.0 : le même LAZARUS... en anglais ! =====
+# Le commentaire #langue: change les mots-clés du fichier.
+# (bambara et wolof arrivent — brouillons à valider !)
+
+let name = "World"
+
+func greet(who) {
+    give "Hello " + who + "!"
+}
+
+for i in 1..3 {
+    vox(greet(name), "- round {i}")
+}
+
+when 2 > 1 {
+    vox("English keywords, same LAZARUS engine!")
+}
+
+keep runs = 0
+runs += 1
+vox("You ran this {runs} times.")
+`;
   EX.etoiles = `# ===== Pyramide d'étoiles =====
 laz hauteur = 7
 
@@ -1987,6 +2160,37 @@ vox("LAZARUS !")
   let currentInputCancel = null;
   const virtualFS = new Map();   // système de fichiers virtuel du playground
 
+  // ---------- v5 : mémoire des variables « garde » ----------
+  const CLE_MEMOIRE = 'lazarus_memoire';
+  function chargeMemoire() {
+    try {
+      return JSON.parse(localStorage.getItem(CLE_MEMOIRE)) || {};
+    } catch (e) { return window.__lazMemoire || {}; }
+  }
+  function sauveMemoire(data) {
+    const fusion = Object.assign(chargeMemoire(), data);
+    try { localStorage.setItem(CLE_MEMOIRE, JSON.stringify(fusion)); }
+    catch (e) { window.__lazMemoire = fusion; }
+  }
+
+  // ---------- v5 : le ralenti pédagogique ----------
+  const varsPanel = document.getElementById('varsPanel');
+  function marqueLigne(n) {
+    const count = editor.value.split('\n').length;
+    let html = '';
+    for (let i = 1; i <= count; i++) {
+      html += (i === n) ? '<span class="cur">▶' + i + '</span>\n' : i + '\n';
+    }
+    linenos.innerHTML = html;
+  }
+  async function onStep(ligne, variables, delaiMs) {
+    marqueLigne(ligne);
+    varsPanel.style.display = 'block';
+    varsPanel.textContent = '👁 ligne ' + ligne + '  ·  ' +
+      (variables.length ? variables.map(([k, v]) => k + ' = ' + v).join('  ·  ') : '(pas encore de variables)');
+    await new Promise(r => setTimeout(r, delaiMs));
+  }
+
   // ---------- la toile de dessin (v3.1) ----------
   const canvasWrap = document.getElementById('canvasWrap');
   const toileCanvas = document.getElementById('toileCanvas');
@@ -2042,13 +2246,26 @@ vox("LAZARUS !")
       fs: virtualFS,   // fichiers virtuels : persistent tant que la page est ouverte
       onClear: () => { consoleEl.innerHTML = ''; },
       onDraw: onDraw,
+      memoire: chargeMemoire(),
+      onSauveMemoire: sauveMemoire,
+      onStep: onStep,
     };
 
     const result = await Lazarus.run(editor.value, io);
 
     if (result.stopped) addLine('⏹ Programme arrêté.', 'sys');
     else if (result.ok) addLine('✔ Terminé.', 'sys');
-    else addLine(result.error, 'err');
+    else {
+      addLine(result.error, 'err');
+      if (result.histoire && result.histoire.length) {
+        addLine("— Le film juste avant l'erreur :", 'sys');
+        for (const [l, n, v] of result.histoire) {
+          addLine('   ligne ' + l + ' : ' + n + ' = ' + v, 'sys');
+        }
+      }
+    }
+    updateLinenos();
+    varsPanel.style.display = 'none';
 
     running = false;
     btnRun.style.display = 'inline-block';
@@ -2066,7 +2283,7 @@ vox("LAZARUS !")
     toileCtx = null;
   });
 
-  addLine('Bienvenue dans LAZARUS v4.0 ! Clique sur ▶ Exécuter, ou charge un exemple — essaie « la couleur » !', 'sys');
+  addLine('Bienvenue dans LAZARUS v5.0 ! Clique sur ▶ Exécuter, ou charge un exemple — essaie « la couleur » !', 'sys');
 })();
 </script>
 

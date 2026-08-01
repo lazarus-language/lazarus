@@ -1,0 +1,20 @@
+# ============================================================
+#  DEMO_V5.LAZ — garde, ralenti, et l'erreur qui raconte
+# ============================================================
+
+garde executions = 0
+executions += 1
+vox("Tu as lancé ce programme {executions} fois (LAZARUS s'en souvient !)")
+
+laz total = 0
+pou i dan 1..5 {
+    total += i
+}
+vox("Somme de 1 à 5 : {total}")
+
+essaie {
+    laz piege = 10 / 0
+} rattrape err {
+    vox("Rattrapé : {err}")
+}
+vox("Tout va bien.")

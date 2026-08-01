@@ -1,0 +1,14 @@
+#langue: anglais
+let name = "World"
+func greet(who) {
+    give "Hello " + who + "!"
+}
+for i in 1..3 {
+    vox(greet(name), "- tour {i}")
+}
+when 2 > 1 {
+    vox("English keywords, same LAZARUS engine!")
+}
+keep runs = 0
+runs += 1
+vox("Runs so far: {runs}")

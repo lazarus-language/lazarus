@@ -1,4 +1,4 @@
-# LAZARUS — Le guide du langage (v4.0)
+# LAZARUS — Le guide du langage (v5.0)
 
 **LAZARUS** est un langage de programmation créé par **Ladji** (2026).
 Sa philosophie : la simplicité de Python + la structure de Java, avec des mots-clés uniques.
@@ -501,6 +501,77 @@ Mesuré sur fibonacci(26) : 4,4 secondes interprété → **0,08 seconde**
 traduit. Accélération ×55. Le fichier généré a besoin du package
 `lazarus-lang` installé (pip install lazarus-lang).
 
+# Les nouveautés de LAZARUS 5.0
+
+## 22. Les langues — coder dans TA langue 🌍
+
+Le même LAZARUS, avec les mots-clés dans ta langue. Ajoute un
+commentaire en tête de fichier :
+
+```lazarus
+#langue: anglais
+let name = "World"
+func greet(who) {
+    give "Hello " + who + "!"
+}
+when 2 > 1 {
+    vox(greet(name))
+}
+```
+
+Langues disponibles : `lazarus` (classique), `anglais`, et des
+**brouillons** `bambara` et `wolof` — locuteurs natifs, corrigez-les,
+c'est votre langue ! Et pour convertir un fichier existant :
+
+```bash
+lazarus --traduire-vers anglais mon_programme.laz
+lazarus --traduire-vers bambara mon_programme.laz
+lazarus --traduire-vers lazarus programme_anglais.laz
+```
+
+Aucun autre langage grand public ne fait ça.
+
+## 23. Les variables qui se souviennent — `garde` 💾
+
+```lazarus
+garde meilleur_score = 0
+garde visites = 0
+visites += 1
+vox("Visite numéro {visites}")
+```
+
+Une variable `garde` est **sauvegardée automatiquement** entre les
+exécutions — sur disque (fichier `.memoire` à côté du programme) ou
+dans le navigateur pour le playground. Un record du monde persistant
+sans jamais toucher aux fichiers.
+
+## 24. Le ralenti pédagogique — `ralenti()` 🐢
+
+```lazarus
+ralenti(0.5)     # une demi-seconde par instruction
+```
+
+Dans le playground : la ligne en cours **s'illumine** dans l'éditeur et
+un panneau montre **les variables changer en direct**. L'outil parfait
+pour comprendre (ou expliquer) un programme. `ralenti(0)` pour
+revenir à la vitesse normale. En mode traduit turbo, ralenti est ignoré.
+
+## 25. L'erreur qui raconte son histoire 🎬
+
+Quand un programme plante, LAZARUS montre le film des dernières
+affectations avant l'erreur :
+
+```
+✘ Erreur LAZARUS (ligne 8) : division par zéro impossible
+
+— Le film juste avant l'erreur :
+   ligne 3 : total = 100
+   ligne 5 : nb_eleves = 0
+```
+
+On voit d'un coup d'œil d'où vient le zéro. Aucune configuration :
+c'est automatique.
+
 ---
 
-*LAZARUS v4.0 — créé par Ladji, propulsé par un interpréteur Python, un moteur JavaScript et un traducteur.*
+*LAZARUS v5.0 — créé par Ladji. Le premier langage qui parle vos langues.*

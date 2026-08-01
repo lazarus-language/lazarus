@@ -41,6 +41,8 @@ Utilisation :
 import sys
 import os
 import re
+import json
+import time
 import random
 import keyword as _pykeyword
 
@@ -77,14 +79,68 @@ KEYWORDS = {
     'laz', 'fonk', 'rend', 'kan', 'sinon', 'tanke', 'pou', 'dan',
     'vrai', 'faux', 'walu', 'et', 'ou', 'non', 'kase', 'swiv',
     'klas', 'herite', 'importe',
-    'essaie', 'rattrape',
+    'essaie', 'rattrape', 'garde',
 }
+
+# ------------------------------------------------------------
+#  v5.0 : LES LANGUES — les mêmes 22 mots-clés, dans ta langue.
+#  Active une langue avec un commentaire en tête de fichier :
+#      #langue: anglais
+#  Les packs bambara et wolof sont des BROUILLONS : locuteurs
+#  natifs, corrigez-les — c'est votre langue, pas la mienne.
+# ------------------------------------------------------------
+
+LANGUES = {
+    'anglais': {
+        'laz': 'let', 'fonk': 'func', 'rend': 'give', 'kan': 'when',
+        'sinon': 'else', 'tanke': 'while', 'pou': 'for', 'dan': 'in',
+        'vrai': 'true', 'faux': 'false', 'walu': 'null', 'et': 'and',
+        'ou': 'or', 'non': 'not', 'kase': 'stop', 'swiv': 'next',
+        'klas': 'class', 'herite': 'extends', 'importe': 'load',
+        'essaie': 'try', 'rattrape': 'catch', 'garde': 'keep',
+    },
+    # BROUILLON — à faire valider par des locuteurs natifs du bambara
+    'bambara': {
+        'laz': 'bila', 'fonk': 'baara', 'rend': 'segin', 'kan': 'ni',
+        'sinon': 'note', 'tanke': 'foo', 'pou': 'ye', 'dan': 'la',
+        'vrai': 'tien', 'faux': 'galon', 'walu': 'foyi', 'et': 'ani',
+        'ou': 'walima', 'non': 'te', 'kase': 'tige', 'swiv': 'taa',
+        'klas': 'kulu', 'herite': 'ciden', 'importe': 'tala',
+        'essaie': 'kekan', 'rattrape': 'minna', 'garde': 'mara',
+    },
+    # BROUILLON — à faire valider par des locuteurs natifs du wolof
+    'wolof': {
+        'laz': 'teg', 'fonk': 'liggeey', 'rend': 'delloo', 'kan': 'su',
+        'sinon': 'walla', 'tanke': 'liye', 'pou': 'ngir', 'dan': 'ci',
+        'vrai': 'degg', 'faux': 'fen', 'walu': 'dara', 'et': 'ak',
+        'ou': 'mbaa', 'non': 'du', 'kase': 'taxaw', 'swiv': 'topp',
+        'klas': 'mbooloo', 'herite': 'donn', 'importe': 'yeb',
+        'essaie': 'jeema', 'rattrape': 'japp', 'garde': 'denc',
+    },
+}
+
+LANGUE_RE = re.compile(r'#\s*langue\s*:\s*([a-zA-Z]+)', re.IGNORECASE)
+
+def detecte_langue(source):
+    """Cherche « #langue: xxx » dans les 3 premières lignes.
+    Retourne (nom, dict mot_local -> mot_canonique) ou (None, None)."""
+    for ligne in source.split('\n')[:3]:
+        m = LANGUE_RE.search(ligne)
+        if m:
+            nom = m.group(1).lower()
+            if nom in ('lazarus', 'classique', 'francais', 'français'):
+                return None, None
+            if nom not in LANGUES:
+                dispo = ', '.join(['lazarus'] + sorted(LANGUES))
+                raise LazError(f"langue inconnue « {nom} » (disponibles : {dispo})", 1)
+            return nom, {v: k for k, v in LANGUES[nom].items()}
+    return None, None
 
 TWO_CHAR_OPS = {'==', '!=', '<=', '>=', '&&', '||', '..', '+=', '-=', '*=', '/='}
 ONE_CHAR_OPS = {'+', '-', '*', '/', '%', '<', '>', '=', '(', ')',
                 '{', '}', '[', ']', ',', '!', ';', '.', ':'}
 
-def tokenize(source):
+def tokenize(source, langue_map=None):
     tokens = []
     i = 0
     line = 1
@@ -159,6 +215,8 @@ def tokenize(source):
             word = source[start:i]
             if word in KEYWORDS:
                 tokens.append((word.upper(), word, line))
+            elif langue_map and word in langue_map:
+                tokens.append((langue_map[word].upper(), word, line))
             else:
                 tokens.append(('IDENT', word, line))
             continue
@@ -265,6 +323,12 @@ class Parser:
             self.expect('OP', '=', '=')
             value = self.parse_expression()
             return ('declare', name, value, line)
+
+        if self.accept('GARDE'):
+            name = self.expect('IDENT', what='un nom de variable')[1]
+            self.expect('OP', '=', '=')
+            value = self.parse_expression()
+            return ('garde', name, value, line)
 
         if self.accept('FONK'):
             name = self.expect('IDENT', what='un nom de fonction')[1]
@@ -687,7 +751,7 @@ def check_number(value, line, contexte='cette opération'):
 #  FONCTIONS INTÉGRÉES
 # ============================================================
 
-def make_builtins(env):
+def make_builtins(env, interp=None):
 
     def b_vox(args, line):
         print(' '.join(to_text(a) for a in args))
@@ -902,6 +966,14 @@ def make_builtins(env):
         _need(args, 1, 'echoue', line)
         raise LazError(to_text(args[0]), line)
 
+    def b_ralenti(args, line):
+        _need(args, 1, 'ralenti', line)
+        v = check_number(args[0], line, 'ralenti()')
+        if interp is not None:
+            interp.vitesse = min(3, max(0, v))
+        # en mode traduit (turbo), ralenti() est ignoré — logique !
+        return None
+
     # --- nouveautés v3.1 : le mode dessin ! ---
     # Les commandes s'accumulent, puis sauve_dessin() écrit une image SVG.
 
@@ -1072,6 +1144,8 @@ def make_builtins(env):
         'sauve_dessin': b_sauve_dessin,     # sauvegarder en image SVG
         # --- nouveautés v4.0 ---
         'echoue': b_echoue,                 # lever sa propre erreur (avec essaie/rattrape)
+        # --- nouveautés v5.0 ---
+        'ralenti': b_ralenti,               # exécution au ralenti, pas à pas
     }
     for name, fn in builtins.items():
         env.declare(name, ('builtin', name, fn))
@@ -1085,10 +1159,47 @@ class Interpreter:
         self.globals = Env()
         self.imported = set()
         self.base_dir = '.'
-        make_builtins(self.globals)
+        self.memoire = {}          # v5 : valeurs des variables « garde »
+        self.garde_noms = set()
+        self.memoire_chemin = None
+        self.vitesse = 0           # v5 : ralenti() en secondes par instruction
+        self.histoire = []         # v5 : le film des dernières affectations
+        make_builtins(self.globals, self)
+
+    def note_histoire(self, line, name, value):
+        self.histoire.append((line, name, to_text(value)))
+        if len(self.histoire) > 6:
+            self.histoire.pop(0)
+
+    def charge_memoire(self):
+        if self.memoire_chemin and os.path.exists(self.memoire_chemin):
+            try:
+                with open(self.memoire_chemin, 'r', encoding='utf-8') as f:
+                    self.memoire = json.load(f)
+            except Exception:
+                self.memoire = {}
+
+    def sauve_memoire(self):
+        if not self.memoire_chemin or not self.garde_noms:
+            return
+        data = {}
+        for n in self.garde_noms:
+            if n in self.globals.vars:
+                v = self.globals.vars[n]
+                try:
+                    json.dumps(v)
+                    data[n] = v
+                except (TypeError, ValueError):
+                    pass
+        try:
+            with open(self.memoire_chemin, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False)
+        except OSError:
+            pass
 
     def run(self, source):
-        tokens = tokenize(source)
+        _, langue_map = detecte_langue(source)
+        tokens = tokenize(source, langue_map)
         ast = Parser(tokens).parse_program()
         return self.exec_block(ast, self.globals)
 
@@ -1100,15 +1211,32 @@ class Interpreter:
 
     def exec_stmt(self, stmt, env):
         kind = stmt[0]
+        if self.vitesse > 0:
+            time.sleep(self.vitesse)
 
         if kind == 'declare':
             _, name, value_node, line = stmt
-            env.declare(name, self.eval(value_node, env))
+            value = self.eval(value_node, env)
+            env.declare(name, value)
+            self.note_histoire(line, name, value)
+            return None
+
+        if kind == 'garde':
+            _, name, value_node, line = stmt
+            self.garde_noms.add(name)
+            if name in self.memoire:
+                value = self.memoire[name]
+            else:
+                value = self.eval(value_node, env)
+            env.declare(name, value)
+            self.note_histoire(line, name, value)
             return None
 
         if kind == 'assign':
             _, name, value_node, line = stmt
-            env.assign(name, self.eval(value_node, env), line)
+            value = self.eval(value_node, env)
+            env.assign(name, value, line)
+            self.note_histoire(line, name, value)
             return None
 
         if kind == 'assign_index':
@@ -1171,7 +1299,8 @@ class Interpreter:
                     src = f.read()
             except FileNotFoundError:
                 raise LazError(f"importe : fichier introuvable : {path}", line)
-            tokens = tokenize(src)
+            _, lmap = detecte_langue(src)
+            tokens = tokenize(src, lmap)
             ast = Parser(tokens).parse_program()
             self.exec_block(ast, self.globals)
             return None
@@ -1445,7 +1574,29 @@ except Exception:
 if _sys.platform == 'win32':
     _os.system('')
 from lazarus import to_text as _s, is_truthy as _t, LazError, runtime as _runtime
+import json as _json
 _b = _runtime()
+
+def _mem_charge(fich):
+    try:
+        with open(fich + '.memoire', 'r', encoding='utf-8') as f:
+            return _json.load(f)
+    except Exception:
+        return {}
+
+def _mem_sauve(fich, data):
+    try:
+        ok = {}
+        for k, v in data.items():
+            try:
+                _json.dumps(v)
+                ok[k] = v
+            except Exception:
+                pass
+        with open(fich + '.memoire', 'w', encoding='utf-8') as f:
+            _json.dump(ok, f, ensure_ascii=False)
+    except Exception:
+        pass
 
 def _add(a, b):
     if isinstance(a, str) or isinstance(b, str):
@@ -1504,6 +1655,7 @@ class Traducteur:
         self.module_names = set()
         self.base_dir = base_dir
         self.imported = set()
+        self.garde_noms = set()
 
     # ---------- utilitaires ----------
 
@@ -1519,6 +1671,9 @@ class Traducteur:
         """Repère tous les noms définis par le programme (variables, fonctions...)."""
         for s in stmts:
             k = s[0]
+            if k == 'garde':
+                self.declared.add(s[1])
+                self.garde_noms.add(s[1])
             if k == 'declare':
                 self.declared.add(s[1])
             elif k == 'assign':
@@ -1687,7 +1842,11 @@ class Traducteur:
 
     def stmt(self, s):
         k = s[0]
-        if k == 'declare' or k == 'assign':
+        if k == 'garde':
+            self.em(f'{self.nom(s[1])} = _MEM.get({s[1]!r}, {self.expr(s[2])})')
+            if self.indent == 0:
+                self.module_names.add(s[1])
+        elif k == 'declare' or k == 'assign':
             self.em(f'{self.nom(s[1])} = {self.expr(s[2])}')
             if self.indent == 0:
                 self.module_names.add(s[1])
@@ -1771,11 +1930,66 @@ class Traducteur:
             raise LazError(f'traduction impossible pour : {k}')
 
     def traduire(self, source):
-        ast = Parser(tokenize(source)).parse_program()
+        _, lmap = detecte_langue(source)
+        ast = Parser(tokenize(source, lmap)).parse_program()
         self.collecte(ast[1])
+        self.em('_MEM = _mem_charge(__file__)')
         for s in ast[1]:
             self.stmt(s)
+        if self.garde_noms:
+            noms = ', '.join(f'{n!r}: {self.nom(n)}' for n in sorted(self.garde_noms))
+            self.em(f'_mem_sauve(__file__, {{{noms}}})')
         return PRELUDE_PY + '\n'.join(self.lines) + '\n'
+
+def convertir_langue(source, cible):
+    """v5.0 : convertit un fichier LAZARUS d'une langue de mots-clés à une autre."""
+    cible = cible.lower()
+    if cible in ('francais', 'français', 'classique'):
+        cible = 'lazarus'
+    if cible != 'lazarus' and cible not in LANGUES:
+        dispo = ', '.join(['lazarus'] + sorted(LANGUES))
+        raise LazError(f"langue inconnue « {cible} » (disponibles : {dispo})")
+    _, rmap = detecte_langue(source)
+    avant = dict(rmap) if rmap else {}
+    cible_map = LANGUES[cible] if cible != 'lazarus' else {k: k for k in KEYWORDS}
+    out = []
+    i, n = 0, len(source)
+    while i < n:
+        c = source[i]
+        if c == '"':
+            j = i + 1
+            while j < n and source[j] != '"':
+                if source[j] == '\\':
+                    j += 1
+                j += 1
+            j = min(j + 1, n)
+            out.append(source[i:j])
+            i = j
+            continue
+        if c == '#' or (c == '/' and i + 1 < n and source[i+1] == '/'):
+            j = i
+            while j < n and source[j] != '\n':
+                j += 1
+            out.append(source[i:j])
+            i = j
+            continue
+        if c.isalpha() or c == '_':
+            j = i
+            while j < n and (source[j].isalnum() or source[j] == '_'):
+                j += 1
+            w = source[i:j]
+            canon = w if w in KEYWORDS else avant.get(w)
+            out.append(cible_map.get(canon, w) if canon else w)
+            i = j
+            continue
+        out.append(c)
+        i += 1
+    texte = ''.join(out)
+    lignes = texte.split('\n')
+    lignes = [l for idx, l in enumerate(lignes) if not (idx < 3 and LANGUE_RE.search(l))]
+    if cible != 'lazarus':
+        lignes.insert(0, f'#langue: {cible}')
+    return '\n'.join(lignes)
 
 def traduire_fichier(src_path, out_path):
     with open(src_path, 'r', encoding='utf-8') as f:
@@ -1841,14 +2055,22 @@ def run_file(path):
 
     interp = Interpreter()
     interp.base_dir = os.path.dirname(os.path.abspath(path)) or '.'
+    interp.memoire_chemin = os.path.abspath(path) + '.memoire'
+    interp.charge_memoire()
     try:
         interp.run(source)
     except LazError as e:
         print(e)
+        if interp.histoire:
+            print("\n— Le film juste avant l'erreur :")
+            for (l, n, v) in interp.histoire:
+                print(f"   ligne {l} : {n} = {v}")
         sys.exit(1)
     except RecursionError:
         print('✘ Erreur LAZARUS : récursion trop profonde (boucle infinie ?)')
         sys.exit(1)
+    finally:
+        interp.sauve_memoire()
 
 def main():
     # Correctif accents : force l'affichage UTF-8 (notamment sur Windows)
@@ -1861,6 +2083,26 @@ def main():
     if sys.platform == 'win32':
         os.system('')
     args = sys.argv[1:]
+    if args and args[0] == '--traduire-vers':
+        if len(args) < 3:
+            print('Utilisation : lazarus --traduire-vers <langue> programme.laz [sortie.laz]')
+            print('Langues : lazarus, ' + ', '.join(sorted(LANGUES)))
+            sys.exit(1)
+        cible, src = args[1], args[2]
+        out = args[3] if len(args) > 3 else (src[:-4] if src.endswith('.laz') else src) + f'.{cible}.laz'
+        try:
+            with open(src, 'r', encoding='utf-8') as f:
+                source = f.read()
+            with open(out, 'w', encoding='utf-8') as f:
+                f.write(convertir_langue(source, cible))
+        except FileNotFoundError:
+            print(f'✘ Fichier introuvable : {src}')
+            sys.exit(1)
+        except LazError as e:
+            print(e)
+            sys.exit(1)
+        print(f'✔ Converti en {cible} : {out}')
+        return
     if args and args[0] in ('--traduire', '-t'):
         if len(args) < 2:
             print('Utilisation : lazarus --traduire programme.laz [sortie.py]')

@@ -1,6 +1,6 @@
 # LAZARUS
 
-**Le langage de programmation créé par Ladji** — la structure de Java, la simplicité de Python, et des mots-clés uniques au monde. **Version 4.0** : un traducteur vers Python (vitesse ×50), l'interpolation `"Salut {nom}"`, la gestion d'erreurs `essaie/rattrape`, le mode dessin, la couleur, les classes et les dictionnaires.
+**Le langage de programmation créé par Ladji** — la structure de Java, la simplicité de Python, et des mots-clés uniques au monde. **Version 5.0 : le premier langage qui parle vos langues** — codez en LAZARUS classique, en anglais, et bientôt en bambara et en wolof. Plus : variables persistantes `garde`, ralenti pédagogique, traducteur vers Python (×50), mode dessin, couleurs, classes.
 
 *A programming language created by Ladji — Java's structure, Python's simplicity, and one-of-a-kind keywords. French-friendly error messages. See the [English section](#-english) below.*
 
@@ -57,6 +57,9 @@ python3 lazarus.py exemples/demo.laz
 | `vox("Salut {nom}")` *(v4)* | interpolation |
 | `essaie { } rattrape err { }` *(v4)* | gestion d'erreurs |
 | `lazarus --traduire prog.laz` *(v4)* | traduction en Python, ×50 plus rapide |
+| `#langue: anglais` + `lazarus --traduire-vers` *(v5)* | mots-clés multilingues |
+| `garde score = 0` *(v5)* | variable qui se souvient entre les exécutions |
+| `ralenti(0.5)` *(v5)* | exécution pas à pas visible (playground) |
 
 - Accolades `{ }` pour les blocs, **pas** de point-virgules
 - Listes : `[1, 2, 3]`, intervalle : `1..10`, dictionnaires : `{ "a": 1 }`
