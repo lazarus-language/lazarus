@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Apprends à coder de zéro avec LAZARUS — Le livre officiel</title>
+<meta name="description" content="Le livre officiel pour apprendre la programmation de zéro avec LAZARUS : 14 chapitres, exercices corrigés, 3 projets complets. En français, rien à installer.">
+<style>
+  :root { --bg:#0d1117; --bg2:#161b22; --border:#2d3648; --text:#e6edf3; --muted:#8b949e;
+          --gold:#f0b429; --gold-dim:#b8860b; --violet:#a78bfa; --green:#4ade80; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; line-height: 1.65; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 0 22px; }
+  a { color: var(--gold); }
+
+  header.hero { background: linear-gradient(160deg, #0d1117 0%, #1a1430 55%, #241a3d 100%);
+                padding: 60px 0 70px; text-align: center; border-bottom: 1px solid var(--border); }
+  .brand { font-family: Consolas, monospace; font-weight: 800; letter-spacing: 6px; color: var(--gold); font-size: 1.3rem; }
+  h1 { font-size: clamp(1.8rem, 5vw, 2.9rem); margin: 18px 0 14px; line-height: 1.2; }
+  .hero p.sub { color: #a8b3c2; font-size: 1.15rem; max-width: 620px; margin: 0 auto 30px; }
+
+  .btn { display: inline-block; background: linear-gradient(135deg, #1a7f37, #2ea043); color: #fff;
+         font-weight: 700; font-size: 1.15rem; padding: 15px 38px; border-radius: 12px; text-decoration: none;
+         box-shadow: 0 6px 24px rgba(46,160,67,.35); }
+  .btn:hover { filter: brightness(1.12); }
+  .btn small { display: block; font-weight: 400; font-size: .8rem; opacity: .85; }
+  .essai { display: block; margin-top: 16px; color: var(--muted); font-size: .95rem; }
+
+  section { padding: 55px 0; border-bottom: 1px solid var(--border); }
+  h2 { font-size: 1.6rem; margin-bottom: 22px; color: var(--gold); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; }
+  .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
+  .card h3 { font-size: 1.05rem; margin-bottom: 8px; }
+  .card p { color: var(--muted); font-size: .95rem; }
+  .card .emo { font-size: 1.6rem; display: block; margin-bottom: 8px; }
+
+  .code { background: #0a0e14; border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px;
+          font-family: Consolas, monospace; font-size: .95rem; color: #c9d1d9; margin: 20px 0; }
+  .code .k { color: var(--gold); } .code .s { color: #7ee787; }
+
+  ul.somm { columns: 2; gap: 30px; list-style: none; }
+  ul.somm li { margin-bottom: 8px; color: #c9d1d9; break-inside: avoid; }
+  ul.somm li::before { content: "✓ "; color: var(--green); }
+  @media (max-width: 640px) { ul.somm { columns: 1; } }
+
+  .auteur { display: flex; gap: 20px; align-items: center; background: var(--bg2); border: 1px solid var(--border);
+            border-radius: 14px; padding: 22px; }
+  .auteur .avatar { min-width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, var(--gold), #8a5c00);
+                    display: flex; align-items: center; justify-content: center; font-size: 1.6rem; font-weight: 800; color: #0d1117; }
+  .faq details { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+                 padding: 14px 18px; margin-bottom: 10px; }
+  .faq summary { cursor: pointer; font-weight: 600; }
+  .faq p { color: var(--muted); margin-top: 8px; }
+
+  .final { text-align: center; padding: 60px 0 70px; }
+  footer { text-align: center; color: var(--muted); font-size: .85rem; padding: 24px 0 34px; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="brand">LAZARUS</div>
+    <h1>Apprends à coder de zéro —<br>dans un langage qui parle français</h1>
+    <p class="sub">Le livre officiel du langage LAZARUS : 14 chapitres progressifs, des exercices corrigés,
+    et 3 vrais projets à créer toi-même. Rien à installer — tout se passe dans ton navigateur.</p>
+    <a class="btn" href="https://ladjidoucare.gumroad.com/l/lazarus">📚 Obtenir le livre — 12 €<small>PDF · mises à jour à vie incluses</small></a>
+    <span class="essai">Pas encore convaincu ? <a href="https://lazarus-language.github.io/lazarus/">Essaie le langage gratuitement →</a></span>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <h2>Pourquoi celui-ci, et pas un livre Python ?</h2>
+    <div class="grid">
+      <div class="card"><span class="emo">🇫🇷</span><h3>Les erreurs t'expliquent</h3>
+        <p>« La variable "scor" n'existe pas — déclare-la avec : laz scor = ... ». En français, avec la solution. Fini le mur d'anglais incompréhensible.</p></div>
+      <div class="card"><span class="emo">🐢</span><h3>Tu VOIS ton programme vivre</h3>
+        <p>Le mode ralenti illumine la ligne en cours et montre tes variables changer en direct. Aucun autre langage ne fait ça.</p></div>
+      <div class="card"><span class="emo">📱</span><h3>Zéro installation</h3>
+        <p>Un navigateur suffit — ordinateur, tablette ou téléphone. Tu codes 30 secondes après avoir ouvert le livre.</p></div>
+      <div class="card"><span class="emo">🎨</span><h3>Tu crées, tu ne recopies pas</h3>
+        <p>Un jeu complet, un quiz dont le record survit entre les parties, et une œuvre d'art dessinée par ton code.</p></div>
+      <div class="card"><span class="emo">⚡</span><h3>Une passerelle vers Python</h3>
+        <p>À la fin, une commande traduit ton code LAZARUS en vrai Python. La transition vers les langages pros devient une promenade.</p></div>
+      <div class="card"><span class="emo">✍️</span><h3>Écrit par le créateur</h3>
+        <p>L'auteur n'a pas seulement écrit le livre — il a construit le langage, ligne par ligne, pour les débutants francophones.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Un aperçu du voyage</h2>
+    <div class="code">
+      <span class="k">garde</span> record = 0&nbsp;&nbsp;&nbsp;<span style="color:#8b949e"># une variable qui se souvient entre les parties</span><br>
+      <span class="k">laz</span> score = 0<br>
+      <span class="k">pou</span> question <span class="k">dan</span> questions {<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<span class="k">kan</span> reponse == question[<span class="s">"r"</span>] {<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;vox_couleur(<span class="s">"Correct !"</span>, <span class="s">"vert"</span>)<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;score += 1<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;}<br>
+      }
+    </div>
+    <p style="color:var(--muted)">↑ Extrait du projet du chapitre 10 : ton quiz à record. Tu écriras ce code toi-même — et tu le comprendras.</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Ce que tu sauras faire</h2>
+    <ul class="somm">
+      <li>Écrire et exécuter tes premiers programmes</li>
+      <li>Variables, calculs et interpolation {nom}</li>
+      <li>Dialoguer avec l'utilisateur</li>
+      <li>Décider avec kan / sinon</li>
+      <li>Répéter avec les boucles (et les voir au ralenti)</li>
+      <li>Créer le jeu du Nombre Mystère 🎮</li>
+      <li>Manier les listes et les dictionnaires</li>
+      <li>Construire tes propres fonctions</li>
+      <li>Créer un quiz à record sauvegardé 🏆</li>
+      <li>Dessiner par le code 🎨</li>
+      <li>Créer des objets avec klas</li>
+      <li>Dompter les erreurs comme un pro</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>L'auteur</h2>
+    <div class="auteur">
+      <div class="avatar">LD</div>
+      <div>
+        <strong>Ladji Doucaré</strong> est le créateur du langage LAZARUS — un langage open source complet,
+        publié mondialement (PyPI, GitHub), avec son propre traducteur vers Python et un playground utilisé
+        depuis le navigateur. Ce livre est sa méthode, écrite avec l'outil qu'il a construit exactement pour ça :
+        apprendre à coder en français, en douceur, en créant.
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="faq">
+  <div class="wrap">
+    <h2>Questions fréquentes</h2>
+    <details><summary>Je n'ai jamais codé de ma vie. C'est vraiment pour moi ?</summary>
+      <p>Oui — c'est exactement pour toi. Le livre part de zéro absolu et chaque notion est expliquée avec des mots simples, un exemple, et des exercices corrigés.</p></details>
+    <details><summary>Il me faut un bon ordinateur ?</summary>
+      <p>Non. Le playground LAZARUS fonctionne dans n'importe quel navigateur, même sur un téléphone. Si tu lis cette page, tu as tout ce qu'il faut.</p></details>
+    <details><summary>Pourquoi ne pas apprendre directement Python ?</summary>
+      <p>Tu peux ! Mais la première marche est plus haute : anglais, installation, erreurs cryptiques. LAZARUS enseigne les mêmes concepts sans ces obstacles — et sa commande « traduire vers Python » fait de la transition une formalité. Le chapitre final t'y emmène.</p></details>
+    <details><summary>Et si le livre évolue ?</summary>
+      <p>Les mises à jour sont incluses à vie : chaque nouvelle édition t'est envoyée gratuitement.</p></details>
+  </div>
+</section>
+
+<div class="final">
+  <div class="wrap">
+    <h2 style="margin-bottom:10px">Le code appartient à ceux qui tapent la ligne suivante.</h2>
+    <p style="color:var(--muted); margin-bottom:26px">Commence aujourd'hui — dans ta langue.</p>
+    <a class="btn" href="https://ladjidoucare.gumroad.com/l/lazarus">📚 Obtenir le livre — 12 €<small>PDF · 34 pages · mises à jour à vie</small></a>
+  </div>
+</div>
+
+<footer>
+  LAZARUS — un langage libre et gratuit créé par Ladji Doucaré ·
+  <a href="https://lazarus-language.github.io/lazarus/">Playground</a> ·
+  <a href="https://github.com/lazarus-language/lazarus">GitHub</a>
+</footer>
+
+</body>
+</html>
