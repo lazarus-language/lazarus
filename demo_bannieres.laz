@@ -1,0 +1,10 @@
+# Démo de la bibliothèque bannieres.laz
+importe "bannieres.laz"
+
+ligne_deco(70, "═")
+banniere("LAZARUS")
+ligne_deco(70, "═")
+vox("")
+banniere_perso("V3 !", "●")
+vox("")
+banniere("2026")

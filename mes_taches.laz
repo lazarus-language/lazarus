@@ -1,0 +1,136 @@
+# ============================================================
+#  MES_TACHES.LAZ — Gestionnaire de tâches, 100 % LAZARUS
+#  Une vraie application : classes, dictionnaires, fichiers.
+#
+#  Tes tâches sont sauvegardées dans « mes_taches.txt » :
+#  ferme le programme, reviens demain, elles sont toujours là.
+# ============================================================
+
+importe "bannieres.laz"
+
+klas Gestionnaire {
+
+    fonk init(moi, chemin) {
+        moi.chemin = chemin
+        moi.taches = []
+        moi.charge()
+    }
+
+    # --- Charger les tâches depuis le fichier ---
+    fonk charge(moi) {
+        kan fichier_existe(moi.chemin) {
+            laz contenu = lis_fichier(moi.chemin)
+            pou ligne dan koupe(contenu, "\n") {
+                kan taille(ligne) > 0 {
+                    laz parts = koupe(ligne, "|")
+                    laz t = { "texte": parts[1], "fait": parts[0] == "1" }
+                    ajoute(moi.taches, t)
+                }
+            }
+        }
+    }
+
+    # --- Sauvegarder les tâches dans le fichier ---
+    fonk sauve(moi) {
+        laz lignes = []
+        pou t dan moi.taches {
+            laz marque = "0"
+            kan t["fait"] {
+                marque = "1"
+            }
+            ajoute(lignes, marque + "|" + t["texte"])
+        }
+        ecris_fichier(moi.chemin, colle(lignes, "\n"))
+    }
+
+    # --- Ajouter une tâche ---
+    fonk ajouter(moi, texte_tache) {
+        ajoute(moi.taches, { "texte": texte_tache, "fait": faux })
+        moi.sauve()
+        vox("  + Tâche ajoutée :", texte_tache)
+    }
+
+    # --- Afficher la liste ---
+    fonk afficher(moi) {
+        kan taille(moi.taches) == 0 {
+            vox("  (aucune tâche — profite de ta journée !)")
+            rend walu
+        }
+        laz num = 1
+        laz restantes = 0
+        pou t dan moi.taches {
+            laz etat = "[ ]"
+            kan t["fait"] {
+                etat = "[X]"
+            } sinon {
+                restantes = restantes + 1
+            }
+            vox(" ", num, etat, t["texte"])
+            num = num + 1
+        }
+        vox("  ->", restantes, "tâche(s) restante(s) sur", taille(moi.taches))
+    }
+
+    # --- Marquer une tâche comme faite ---
+    fonk terminer(moi, num) {
+        kan num < 1 ou num > taille(moi.taches) {
+            vox("  ! Numéro invalide")
+            rend walu
+        }
+        laz t = moi.taches[num - 1]
+        t["fait"] = vrai
+        moi.sauve()
+        vox("  V Bien joué ! Terminé :", t["texte"])
+    }
+
+    # --- Supprimer une tâche ---
+    fonk supprimer(moi, num) {
+        kan num < 1 ou num > taille(moi.taches) {
+            vox("  ! Numéro invalide")
+            rend walu
+        }
+        laz t = retire(moi.taches, num - 1)
+        moi.sauve()
+        vox("  - Supprimé :", t["texte"])
+    }
+}
+
+# ============================================================
+#  Programme principal : le menu
+# ============================================================
+
+banniere("TACHES")
+vox("        Gestionnaire de tâches — propulsé par LAZARUS")
+vox("")
+
+laz g = Gestionnaire("mes_taches.txt")
+laz continuer = vrai
+
+tanke continuer {
+    vox("")
+    vox("  1. Voir mes tâches   2. Ajouter   3. Terminer   4. Supprimer   5. Quitter")
+    laz choix = demand("  Ton choix : ")
+    vox("")
+
+    kan choix == "1" {
+        g.afficher()
+    } sinon kan choix == "2" {
+        laz texte_t = demand("  Quelle tâche ? ")
+        kan taille(texte_t) > 0 {
+            g.ajouter(texte_t)
+        }
+    } sinon kan choix == "3" {
+        g.afficher()
+        laz n = nombre(demand("  Numéro de la tâche terminée : "))
+        g.terminer(n)
+    } sinon kan choix == "4" {
+        g.afficher()
+        laz n = nombre(demand("  Numéro de la tâche à supprimer : "))
+        g.supprimer(n)
+    } sinon kan choix == "5" {
+        continuer = faux
+        vox("  Tes tâches sont sauvegardées. À bientôt !")
+    } sinon {
+        vox("  ! Choix inconnu, tape un chiffre de 1 à 5")
+    }
+}
