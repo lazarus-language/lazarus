@@ -1,0 +1,45 @@
+# ============================================================
+#  LOGO ANNOTATEAI — dessiné par le langage LAZARUS
+#  Chaque lettre est définie dans un dictionnaire (v2.0),
+#  et une fonction assemble le mot ligne par ligne.
+# ============================================================
+
+laz police = {
+    "A": [" ███ ", "█   █", "█████", "█   █", "█   █"],
+    "N": ["█   █", "██  █", "█ █ █", "█  ██", "█   █"],
+    "O": [" ███ ", "█   █", "█   █", "█   █", " ███ "],
+    "T": ["█████", "  █  ", "  █  ", "  █  ", "  █  "],
+    "E": ["█████", "█    ", "████ ", "█    ", "█████"],
+    "I": ["█████", "  █  ", "  █  ", "  █  ", "█████"]
+}
+
+fonk dessine(mot) {
+    pou ligne dan 0..4 {
+        laz s = "   "
+        pou i dan 0..taille(mot) - 1 {
+            laz lettre = police[mot[i]]
+            s = s + lettre[ligne] + "  "
+        }
+        vox(s)
+    }
+}
+
+fonk barre(largeur) {
+    laz b = ""
+    pou i dan 1..largeur {
+        b = b + "═"
+    }
+    rend b
+}
+
+vox("")
+vox("  ╔" + barre(60) + "╗")
+vox("")
+dessine("ANNOTATE")
+vox("")
+dessine("AI")
+vox("")
+vox("  ╚" + barre(60) + "╝")
+vox("")
+vox("       AnnotateAI — un logo dessiné par LAZARUS,")
+vox("       le langage créé par le fondateur lui-même.")

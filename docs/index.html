@@ -228,7 +228,7 @@
 <header>
   <div class="logo">LAZARUS</div>
   <div class="tagline">Le langage de programmation créé par <b>Ladji</b> — accolades comme Java, simplicité de Python, mots-clés uniques.</div>
-  <div class="version">v2.0</div>
+  <div class="version">v3.0</div>
 </header>
 
 <div class="toolbar">
@@ -243,6 +243,7 @@
     <option value="etoiles">Pyramide d'étoiles</option>
     <option value="poo">v2.0 : classes et objets (klas)</option>
     <option value="dico">v2.0 : dictionnaires</option>
+    <option value="couleurs">v3.0 : la couleur !</option>
   </select>
   <button id="btnClear">🗑 Effacer la console</button>
   <span class="hint">Astuce : Ctrl + Entrée pour exécuter</span>
@@ -339,13 +340,15 @@ v2.0 : cles valeurs contient
 colle remplace lis_fichier
 ecris_fichier ajoute_fichier
 fichier_existe
+v3.0 : vox_couleur stylise
+efface_ecran · raccourcis += -=
 # valeurs : vrai faux walu</pre>
     </div>
   </div>
 </details>
 
 <footer>
-  <b>LAZARUS v2.0</b> — créé par Ladji · Un langage libre et gratuit, pour tout le monde · <a href="https://github.com/lazarus-language/lazarus" style="color:#f0b429">GitHub</a> · pip install lazarus-lang
+  <b>LAZARUS v3.0</b> — créé par Ladji · Un langage libre et gratuit, pour tout le monde · <a href="https://github.com/lazarus-language/lazarus" style="color:#f0b429">GitHub</a> · pip install lazarus-lang
 </footer>
 
 <script>
@@ -380,7 +383,7 @@ const Lazarus = (function () {
   const KEYWORDS = new Set(['laz', 'fonk', 'rend', 'kan', 'sinon', 'tanke', 'pou', 'dan',
     'vrai', 'faux', 'walu', 'et', 'ou', 'non', 'kase', 'swiv',
     'klas', 'herite', 'importe']);
-  const TWO_CHAR = new Set(['==', '!=', '<=', '>=', '&&', '||', '..']);
+  const TWO_CHAR = new Set(['==', '!=', '<=', '>=', '&&', '||', '..', '+=', '-=', '*=', '/=']);
   const ONE_CHAR = new Set(['+', '-', '*', '/', '%', '<', '>', '=', '(', ')',
     '{', '}', '[', ']', ',', '!', ';', '.', ':']);
 
@@ -598,9 +601,14 @@ const Lazarus = (function () {
       }
 
       const expr = this.parseExpression();
-      if (this.check('OP', '=')) {
-        this.next();
-        const value = this.parseExpression();
+      const tok2 = this.peek();
+      const estCompose = tok2[0] === 'OP' && ['+=', '-=', '*=', '/='].includes(tok2[1]);
+      if (this.check('OP', '=') || estCompose) {
+        const op = this.next()[1];
+        let value = this.parseExpression();
+        if (estCompose) {
+          value = ['binop', op[0], expr, value, line];
+        }
         if (expr[0] === 'var') return ['assign', expr[1], value, line];
         if (expr[0] === 'index') return ['assign_index', expr[1], expr[2], value, line];
         if (expr[0] === 'attr') return ['assign_attr', expr[1], expr[2], value, line];
@@ -1036,6 +1044,38 @@ const Lazarus = (function () {
         self.need(args, 1, 'fichier_existe', line);
         return self.fs.has(toText(args[0]));
       });
+
+      // --- nouveautés v3.0 : la couleur ! ---
+      const COULEURS = {
+        rouge: '31', vert: '32', jaune: '33', bleu: '34',
+        violet: '35', cyan: '36', blanc: '37', or: '93',
+        gris: '90', rose: '95', noir: '30',
+      };
+      const STYLES = { gras: '1', souligne: '4', 'souligné': '4' };
+
+      B('vox_couleur', async (args, line) => {
+        self.need(args, 2, 'vox_couleur', line);
+        const couleur = toText(args[args.length - 1]).toLowerCase();
+        if (!(couleur in COULEURS)) {
+          throw new LazError(`couleur inconnue « ${couleur} » (disponibles : ${Object.keys(COULEURS).sort().join(', ')})`, line);
+        }
+        const texte = args.slice(0, -1).map(toText).join(' ');
+        self.io.onPrint(`\x1b[${COULEURS[couleur]}m${texte}\x1b[0m`);
+        return null;
+      });
+      B('stylise', async (args, line) => {
+        self.need(args, 2, 'stylise', line);
+        const style = toText(args[1]).toLowerCase();
+        const code = COULEURS[style] || STYLES[style];
+        if (!code) {
+          throw new LazError(`style inconnu « ${style} » (disponibles : ${Object.keys(COULEURS).sort().concat(['gras', 'souligne']).join(', ')})`, line);
+        }
+        return `\x1b[${code}m${toText(args[0])}\x1b[0m`;
+      });
+      B('efface_ecran', async () => {
+        if (self.io.onClear) self.io.onClear();
+        return null;
+      });
     }
 
     async run(source) {
@@ -1387,7 +1427,7 @@ const Lazarus = (function () {
     }
   }
 
-  return { run, toText, LazError, version: '2.0' };
+  return { run, toText, LazError, version: '3.0' };
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = Lazarus;
@@ -1554,6 +1594,25 @@ vox("Clés :", cles(personne))
 vox("Contient nom ?", contient(personne, "nom"))
 vox("Taille :", taille(personne))
 `;
+  EX.couleurs = `# ===== v3.0 : La couleur ! =====
+vox_couleur("Le rouge de l'alerte", "rouge")
+vox_couleur("Le vert de la victoire", "vert")
+vox_couleur("Le bleu du ciel", "bleu")
+vox_couleur("L'or de LAZARUS", "or")
+
+# stylise() colore un morceau au milieu d'une phrase
+laz nom = stylise("LAZARUS", "or")
+vox("Le langage " + nom + " passe en " + stylise("v3.0", "gras") + " !")
+
+# Et les nouveaux raccourcis :
+laz score = 0
+pou i dan 1..5 {
+    score += i * 10
+    vox_couleur("Score : " + texte(score), "cyan")
+}
+vox("")
+vox_couleur("À toi de jouer !", "violet")
+`;
   EX.etoiles = `# ===== Pyramide d'étoiles =====
 laz hauteur = 7
 
@@ -1606,11 +1665,39 @@ vox("LAZARUS !")
     }
   });
 
-  // ---------- console ----------
+  // ---------- console (avec rendu des couleurs ANSI de LAZARUS v3) ----------
+  const ANSI_CSS = {
+    '30': 'color:#484f58', '31': 'color:#f87171', '32': 'color:#4ade80',
+    '33': 'color:#facc15', '34': 'color:#60a5fa', '35': 'color:#c084fc',
+    '36': 'color:#22d3ee', '37': 'color:#e6edf3', '90': 'color:#8b949e',
+    '93': 'color:#f0b429', '95': 'color:#f9a8d4',
+    '1': 'font-weight:bold', '4': 'text-decoration:underline',
+  };
+
   function addLine(text, cls) {
     const div = document.createElement('div');
     div.className = cls || 'out';
-    div.textContent = text;
+    if (text.includes('\x1b[')) {
+      // découpe le texte sur les codes couleur et crée des spans stylés
+      const parts = text.split(/\x1b\[([0-9;]*)m/);
+      let styles = [];
+      for (let i = 0; i < parts.length; i++) {
+        if (i % 2 === 1) {
+          // code de style
+          for (const code of parts[i].split(';')) {
+            if (code === '0' || code === '') styles = [];
+            else if (ANSI_CSS[code]) styles.push(ANSI_CSS[code]);
+          }
+        } else if (parts[i]) {
+          const span = document.createElement('span');
+          span.textContent = parts[i];
+          if (styles.length) span.style.cssText = styles.join(';');
+          div.appendChild(span);
+        }
+      }
+    } else {
+      div.textContent = text;
+    }
     consoleEl.appendChild(div);
     consoleEl.scrollTop = consoleEl.scrollHeight;
     return div;
@@ -1672,6 +1759,7 @@ vox("LAZARUS !")
       shouldStop: () => stopFlag,
       onYield: () => new Promise(r => setTimeout(r, 0)),
       fs: virtualFS,   // fichiers virtuels : persistent tant que la page est ouverte
+      onClear: () => { consoleEl.innerHTML = ''; },
     };
 
     const result = await Lazarus.run(editor.value, io);
@@ -1692,7 +1780,7 @@ vox("LAZARUS !")
   });
   btnClear.addEventListener('click', () => { consoleEl.innerHTML = ''; });
 
-  addLine('Bienvenue dans LAZARUS v2.0 ! Clique sur ▶ Exécuter, ou charge un exemple.', 'sys');
+  addLine('Bienvenue dans LAZARUS v3.0 ! Clique sur ▶ Exécuter, ou charge un exemple — essaie « la couleur » !', 'sys');
 })();
 </script>
 

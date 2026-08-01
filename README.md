@@ -1,6 +1,6 @@
 # LAZARUS
 
-**Le langage de programmation créé par Ladji** — la structure de Java, la simplicité de Python, et des mots-clés uniques au monde. **Version 2.0** : classes, dictionnaires, modules et fichiers.
+**Le langage de programmation créé par Ladji** — la structure de Java, la simplicité de Python, et des mots-clés uniques au monde. **Version 3.0** : la couleur dans le terminal, les raccourcis `+=`, plus les classes, dictionnaires, modules et fichiers de la v2.
 
 *A programming language created by Ladji — Java's structure, Python's simplicity, and one-of-a-kind keywords. French-friendly error messages. See the [English section](#-english) below.*
 
@@ -51,10 +51,12 @@ python3 lazarus.py exemples/demo.laz
 | `klas ... herite ...` *(v2)* | classes, objets, héritage |
 | `{ "cle": valeur }` *(v2)* | dictionnaires |
 | `importe "outils.laz"` *(v2)* | modules |
+| `vox_couleur("Gagné !", "vert")` *(v3)* | affichage en couleur |
+| `score += 10` *(v3)* | raccourcis `+=` `-=` `*=` `/=` |
 
 - Accolades `{ }` pour les blocs, **pas** de point-virgules
 - Listes : `[1, 2, 3]`, intervalle : `1..10`, dictionnaires : `{ "a": 1 }`
-- 23 fonctions intégrées : `vox`, `demand`, `nombre`, `texte`, `taille`, `ajoute`, `retire`, `hasard`, `arondi`, `majus`, `minus`, `koupe`, `tri`, `tip`, `cles`, `valeurs`, `contient`, `colle`, `remplace`, `lis_fichier`, `ecris_fichier`, `ajoute_fichier`, `fichier_existe`
+- 26 fonctions intégrées : `vox`, `demand`, `nombre`, `texte`, `taille`, `ajoute`, `retire`, `hasard`, `arondi`, `majus`, `minus`, `koupe`, `tri`, `tip`, `cles`, `valeurs`, `contient`, `colle`, `remplace`, `lis_fichier`, `ecris_fichier`, `ajoute_fichier`, `fichier_existe`, `vox_couleur`, `stylise`, `efface_ecran`
 - Lecture/écriture de fichiers, messages d'erreur **en français**, clairs et pédagogiques
 
 📚 **[Guide complet du langage → GUIDE_LAZARUS.md](GUIDE_LAZARUS.md)**

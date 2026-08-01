@@ -1,4 +1,4 @@
-# LAZARUS — Le guide du langage (v2.0)
+# LAZARUS — Le guide du langage (v3.0)
 
 **LAZARUS** est un langage de programmation créé par **Ladji** (2026).
 Sa philosophie : la simplicité de Python + la structure de Java, avec des mots-clés uniques.
@@ -383,4 +383,44 @@ kan fichier_existe("journal.txt") {
 
 ---
 
-*LAZARUS v2.0 — créé par Ladji, propulsé par un interpréteur Python et un moteur JavaScript.*
+# Les nouveautés de LAZARUS 3.0
+
+## 16. La couleur ! 🎨
+
+Trois nouvelles fonctions pour rendre tes programmes vivants — elles
+marchent dans le terminal ET dans le playground web :
+
+```lazarus
+vox_couleur("Bravo, tu as gagné !", "vert")
+vox_couleur("Attention !", "rouge")
+
+# stylise() colore un morceau au milieu d'une phrase :
+laz nom = stylise("LAZARUS", "or")
+vox("Le langage " + nom + " est " + stylise("génial", "gras"))
+
+efface_ecran()    # nettoie tout l'écran
+```
+
+Couleurs disponibles : `rouge`, `vert`, `jaune`, `bleu`, `violet`,
+`cyan`, `blanc`, `or`, `gris`, `rose`, `noir`.
+Styles pour `stylise()` : toutes les couleurs + `gras` et `souligne`.
+
+## 17. Les raccourcis += -= *= /=
+
+Fini d'écrire `score = score + 10` :
+
+```lazarus
+laz score = 0
+score += 10      # ajouter
+score -= 3       # retirer
+score *= 2       # multiplier
+score /= 7       # diviser
+
+# Ça marche partout : listes, dictionnaires, objets
+panier["pommes"] += 1
+joueur.vie -= degats
+```
+
+---
+
+*LAZARUS v3.0 — créé par Ladji, propulsé par un interpréteur Python et un moteur JavaScript.*

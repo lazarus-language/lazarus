@@ -1,0 +1,97 @@
+# ============================================================
+#  BANNIERES.LAZ — La première bibliothèque de l'écosystème
+#  LAZARUS, créée par Ladji.
+#
+#  Utilisation dans ton programme :
+#      importe "bannieres.laz"
+#      banniere("TON TEXTE")
+#      banniere_perso("SUPER", "●")
+#
+#  Alphabet complet A-Z, chiffres 0-9, espace et ponctuation.
+# ============================================================
+
+laz POLICE_BAN = {
+    "A": [" ███ ", "█   █", "█████", "█   █", "█   █"],
+    "B": ["████ ", "█   █", "████ ", "█   █", "████ "],
+    "C": [" ████", "█    ", "█    ", "█    ", " ████"],
+    "D": ["████ ", "█   █", "█   █", "█   █", "████ "],
+    "E": ["█████", "█    ", "████ ", "█    ", "█████"],
+    "F": ["█████", "█    ", "████ ", "█    ", "█    "],
+    "G": [" ████", "█    ", "█  ██", "█   █", " ███ "],
+    "H": ["█   █", "█   █", "█████", "█   █", "█   █"],
+    "I": ["█████", "  █  ", "  █  ", "  █  ", "█████"],
+    "J": ["█████", "   █ ", "   █ ", "█  █ ", " ██  "],
+    "K": ["█   █", "█  █ ", "███  ", "█  █ ", "█   █"],
+    "L": ["█    ", "█    ", "█    ", "█    ", "█████"],
+    "M": ["█   █", "██ ██", "█ █ █", "█   █", "█   █"],
+    "N": ["█   █", "██  █", "█ █ █", "█  ██", "█   █"],
+    "O": [" ███ ", "█   █", "█   █", "█   █", " ███ "],
+    "P": ["████ ", "█   █", "████ ", "█    ", "█    "],
+    "Q": [" ███ ", "█   █", "█ █ █", "█  █ ", " ██ █"],
+    "R": ["████ ", "█   █", "████ ", "█  █ ", "█   █"],
+    "S": [" ████", "█    ", " ███ ", "    █", "████ "],
+    "T": ["█████", "  █  ", "  █  ", "  █  ", "  █  "],
+    "U": ["█   █", "█   █", "█   █", "█   █", " ███ "],
+    "V": ["█   █", "█   █", "█   █", " █ █ ", "  █  "],
+    "W": ["█   █", "█   █", "█ █ █", "██ ██", "█   █"],
+    "X": ["█   █", " █ █ ", "  █  ", " █ █ ", "█   █"],
+    "Y": ["█   █", " █ █ ", "  █  ", "  █  ", "  █  "],
+    "Z": ["█████", "   █ ", "  █  ", " █   ", "█████"],
+    "0": [" ███ ", "█  ██", "█ █ █", "██  █", " ███ "],
+    "1": ["  █  ", " ██  ", "  █  ", "  █  ", "█████"],
+    "2": [" ███ ", "█   █", "  ██ ", " █   ", "█████"],
+    "3": ["████ ", "    █", " ███ ", "    █", "████ "],
+    "4": ["█   █", "█   █", "█████", "    █", "    █"],
+    "5": ["█████", "█    ", "████ ", "    █", "████ "],
+    "6": [" ███ ", "█    ", "████ ", "█   █", " ███ "],
+    "7": ["█████", "   █ ", "  █  ", " █   ", "█    "],
+    "8": [" ███ ", "█   █", " ███ ", "█   █", " ███ "],
+    "9": [" ███ ", "█   █", " ████", "    █", " ███ "],
+    " ": ["     ", "     ", "     ", "     ", "     "],
+    "!": ["  █  ", "  █  ", "  █  ", "     ", "  █  "],
+    "?": [" ███ ", "█   █", "  ██ ", "     ", "  █  "],
+    "-": ["     ", "     ", "█████", "     ", "     "],
+    ".": ["     ", "     ", "     ", "     ", "  █  "],
+    "+": ["     ", "  █  ", "█████", "  █  ", "     "]
+}
+
+# Affiche un texte en grosses lettres
+fonk banniere(mot_ban) {
+    laz grand = majus(mot_ban)
+    pou ligne_ban dan 0..4 {
+        laz s_ban = ""
+        pou c_ban dan grand {
+            kan non contient(POLICE_BAN, c_ban) {
+                c_ban = "?"
+            }
+            laz lettre_ban = POLICE_BAN[c_ban]
+            s_ban = s_ban + lettre_ban[ligne_ban] + "  "
+        }
+        vox(s_ban)
+    }
+}
+
+# Même chose, mais avec le caractère de ton choix à la place de █
+fonk banniere_perso(mot_ban, motif_ban) {
+    laz grand = majus(mot_ban)
+    pou ligne_ban dan 0..4 {
+        laz s_ban = ""
+        pou c_ban dan grand {
+            kan non contient(POLICE_BAN, c_ban) {
+                c_ban = "?"
+            }
+            laz lettre_ban = POLICE_BAN[c_ban]
+            s_ban = s_ban + remplace(lettre_ban[ligne_ban], "█", motif_ban) + "  "
+        }
+        vox(s_ban)
+    }
+}
+
+# Une ligne décorative de la largeur demandée
+fonk ligne_deco(largeur_ban, motif_ban) {
+    laz s_ban = ""
+    pou i_ban dan 1..largeur_ban {
+        s_ban = s_ban + motif_ban
+    }
+    vox(s_ban)
+}

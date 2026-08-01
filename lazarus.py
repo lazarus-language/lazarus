@@ -9,7 +9,7 @@
 ╚══════╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚══════╝
 
 LAZARUS — Le langage de programmation de Ladji
-Version 2.0
+Version 3.0
 
 Syntaxe hybride Java + Python : des accolades { } mais pas de point-virgules.
 Mots-clés inventés :
@@ -77,7 +77,7 @@ KEYWORDS = {
     'klas', 'herite', 'importe',
 }
 
-TWO_CHAR_OPS = {'==', '!=', '<=', '>=', '&&', '||', '..'}
+TWO_CHAR_OPS = {'==', '!=', '<=', '>=', '&&', '||', '..', '+=', '-=', '*=', '/='}
 ONE_CHAR_OPS = {'+', '-', '*', '/', '%', '<', '>', '=', '(', ')',
                 '{', '}', '[', ']', ',', '!', ';', '.', ':'}
 
@@ -343,9 +343,14 @@ class Parser:
 
         # expression ou affectation
         expr = self.parse_expression()
-        if self.check('OP', '='):
-            self.next()
+        tok2 = self.peek()
+        est_compose = tok2[0] == 'OP' and tok2[1] in ('+=', '-=', '*=', '/=')
+        if self.check('OP', '=') or est_compose:
+            op = self.next()[1]
             value = self.parse_expression()
+            if est_compose:
+                # x += 5 devient x = x + 5 (pareil pour -= *= /=)
+                value = ('binop', op[0], expr, value, line)
             if expr[0] == 'var':
                 return ('assign', expr[1], value, line)
             if expr[0] == 'index':
@@ -830,6 +835,38 @@ def make_builtins(env):
         _need(args, 1, 'fichier_existe', line)
         return os.path.exists(to_text(args[0]))
 
+    # --- nouveautés v3.0 : la couleur ! ---
+
+    COULEURS = {
+        'rouge': '31', 'vert': '32', 'jaune': '33', 'bleu': '34',
+        'violet': '35', 'cyan': '36', 'blanc': '37', 'or': '93',
+        'gris': '90', 'rose': '95', 'noir': '30',
+    }
+    STYLES = {'gras': '1', 'souligne': '4', 'souligné': '4'}
+
+    def b_vox_couleur(args, line):
+        _need(args, 2, 'vox_couleur', line)
+        couleur = to_text(args[-1]).lower()
+        if couleur not in COULEURS:
+            dispo = ', '.join(sorted(COULEURS))
+            raise LazError(f"couleur inconnue « {couleur} » (disponibles : {dispo})", line)
+        texte_v = ' '.join(to_text(a) for a in args[:-1])
+        print(f"\033[{COULEURS[couleur]}m{texte_v}\033[0m")
+        return None
+
+    def b_stylise(args, line):
+        _need(args, 2, 'stylise', line)
+        style = to_text(args[1]).lower()
+        code = COULEURS.get(style) or STYLES.get(style)
+        if code is None:
+            dispo = ', '.join(sorted(list(COULEURS) + ['gras', 'souligne']))
+            raise LazError(f"style inconnu « {style} » (disponibles : {dispo})", line)
+        return f"\033[{code}m{to_text(args[0])}\033[0m"
+
+    def b_efface_ecran(args, line):
+        print('\033[2J\033[H', end='')
+        return None
+
     def _need(args, count, name, line):
         if len(args) < count:
             raise LazError(f"{name}() demande au moins {count} argument(s), reçu {len(args)}", line)
@@ -859,6 +896,10 @@ def make_builtins(env):
         'ecris_fichier': b_ecris_fichier,   # écrire (écraser) un fichier
         'ajoute_fichier': b_ajoute_fichier, # ajouter à la fin d'un fichier
         'fichier_existe': b_fichier_existe, # le fichier existe-t-il ?
+        # --- nouveautés v3.0 ---
+        'vox_couleur': b_vox_couleur,       # afficher en couleur
+        'stylise': b_stylise,               # colorer/styliser un morceau de texte
+        'efface_ecran': b_efface_ecran,     # nettoyer l'écran
     }
     for name, fn in builtins.items():
         env.declare(name, ('builtin', name, fn))
@@ -1201,7 +1242,7 @@ class Interpreter:
 
 BANNER = """
   ╔═══════════════════════════════════════════╗
-  ║   LAZARUS v2.0 — le langage de Ladji      ║
+  ║   LAZARUS v3.0 — le langage de Ladji      ║
   ║   Tape ton code, ou « sortir » pour quitter ║
   ╚═══════════════════════════════════════════╝
 """
@@ -1267,6 +1308,9 @@ def main():
         sys.stderr.reconfigure(encoding='utf-8')
     except Exception:
         pass
+    # Activer les couleurs ANSI dans les consoles Windows
+    if sys.platform == 'win32':
+        os.system('')
     if len(sys.argv) > 1:
         run_file(sys.argv[1])
     else:

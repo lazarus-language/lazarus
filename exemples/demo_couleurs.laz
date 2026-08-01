@@ -1,0 +1,53 @@
+# ============================================================
+#  DEMO_COULEURS.LAZ — Les nouveautés de LAZARUS 3.0
+#  Couleurs dans le terminal + raccourcis += -= *= /=
+# ============================================================
+
+vox("===== 1. vox_couleur =====")
+vox_couleur("Le rouge de l'alerte", "rouge")
+vox_couleur("Le vert de la victoire", "vert")
+vox_couleur("Le jaune du soleil", "jaune")
+vox_couleur("Le bleu du ciel", "bleu")
+vox_couleur("Le violet du mystère", "violet")
+vox_couleur("Le cyan de l'océan", "cyan")
+vox_couleur("L'or de LAZARUS", "or")
+
+vox("")
+vox("===== 2. stylise (dans une phrase) =====")
+laz nom = stylise("LAZARUS", "or")
+laz important = stylise("vraiment", "gras")
+vox("Le langage " + nom + " est " + important + " puissant !")
+vox("Score : " + stylise("100", "vert") + " / Erreurs : " + stylise("0", "rouge"))
+
+vox("")
+vox("===== 3. Les raccourcis += -= *= /= =====")
+laz score = 10
+score += 5
+vox("10 += 5  ->", score)
+score -= 3
+vox("   -= 3  ->", score)
+score *= 2
+vox("   *= 2  ->", score)
+score /= 4
+vox("   /= 4  ->", score)
+
+# Ça marche aussi sur les listes, dicos et objets !
+laz panier = { "pommes": 2 }
+panier["pommes"] += 3
+vox("Pommes dans le panier :", panier["pommes"])
+
+klas Compteur {
+    fonk init(moi) {
+        moi.valeur = 0
+    }
+    fonk boost(moi) {
+        moi.valeur += 100
+    }
+}
+laz c = Compteur()
+c.boost()
+c.valeur += 1
+vox("Compteur boosté :", c.valeur)
+
+vox("")
+vox_couleur("LAZARUS 3.0 : la couleur est arrivée !", "or")
