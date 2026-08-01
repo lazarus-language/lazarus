@@ -1436,6 +1436,14 @@ BUILTIN_NAMES = frozenset(runtime().keys())
 
 PRELUDE_PY = '''# Fichier généré par LAZARUS v4.0 (lazarus --traduire)
 # Modifie plutôt le fichier .laz d'origine, puis re-traduis.
+import sys as _sys, os as _os
+try:
+    _sys.stdout.reconfigure(encoding='utf-8')
+    _sys.stderr.reconfigure(encoding='utf-8')
+except Exception:
+    pass
+if _sys.platform == 'win32':
+    _os.system('')
 from lazarus import to_text as _s, is_truthy as _t, LazError, runtime as _runtime
 _b = _runtime()
 

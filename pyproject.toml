@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lazarus-lang"
-version = "4.0.0"
+version = "4.0.1"
 description = "LAZARUS — le langage de programmation de Ladji : accolades comme Java, simplicité de Python, mots-clés uniques (laz, fonk, kan, klas...). v4 : traducteur vers Python (vitesse x50), interpolation {nom}, essaie/rattrape, mode dessin, couleurs, classes, dictionnaires."
 readme = "README.md"
 authors = [{ name = "Ladji Doucaré" }]
