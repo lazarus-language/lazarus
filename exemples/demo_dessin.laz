@@ -1,0 +1,40 @@
+# ============================================================
+#  DEMO_DESSIN.LAZ — Le mode dessin de LAZARUS 3.1 !
+#  Dans le playground : le dessin apparaît en direct.
+#  Avec Python : sauve_dessin() crée une image SVG.
+# ============================================================
+
+toile(420, 300)
+
+# Le ciel étoilé (une boucle qui dessine !)
+pou i dan 1..12 {
+    cercle_plein(i * 34 - 10, 20 + (i * 37) % 70, 2, "blanc")
+}
+
+# Le soleil
+cercle_plein(350, 60, 35, "or")
+pou i dan 0..7 {
+    laz angle = i * 45
+    kan angle == 0 { trace_ligne(395, 60, 415, 60, "or") }
+    kan angle == 90 { trace_ligne(350, 105, 350, 125, "or") }
+    kan angle == 180 { trace_ligne(305, 60, 285, 60, "or") }
+}
+
+# Le sol
+trace_ligne(0, 260, 420, 260, "vert")
+
+# La maison
+rect_plein(90, 180, 120, 80, "gris")
+trace_ligne(85, 180, 150, 125, "rouge")
+trace_ligne(150, 125, 215, 180, "rouge")
+trace_ligne(85, 180, 215, 180, "rouge")
+rect_plein(130, 215, 30, 45, "or")       # la porte
+trace_rect(100, 195, 20, 20, "cyan")     # la fenêtre
+
+# La signature
+trace_texte(240, 245, "Dessine en LAZARUS !", "cyan")
+
+# Sauvegarde en image (fichier SVG)
+sauve_dessin("mon_dessin.svg")
+vox("Dessin terminé !")
+vox("Image sauvegardée : mon_dessin.svg")

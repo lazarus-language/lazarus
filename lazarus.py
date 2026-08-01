@@ -867,6 +867,131 @@ def make_builtins(env):
         print('\033[2J\033[H', end='')
         return None
 
+    # --- nouveautés v3.1 : le mode dessin ! ---
+    # Les commandes s'accumulent, puis sauve_dessin() écrit une image SVG.
+
+    DESSIN_COULEURS = {
+        'rouge': '#f87171', 'vert': '#4ade80', 'jaune': '#facc15',
+        'bleu': '#60a5fa', 'violet': '#c084fc', 'cyan': '#22d3ee',
+        'blanc': '#e6edf3', 'or': '#f0b429', 'gris': '#8b949e',
+        'rose': '#f9a8d4', 'noir': '#0d1117',
+    }
+    etat_dessin = {'toile': None}
+
+    def _couleur_css(nom, line):
+        nom = to_text(nom).lower()
+        if nom.startswith('#'):
+            return nom
+        if nom not in DESSIN_COULEURS:
+            dispo = ', '.join(sorted(DESSIN_COULEURS))
+            raise LazError(f"couleur inconnue « {nom} » (disponibles : {dispo}, ou un code #rrggbb)", line)
+        return DESSIN_COULEURS[nom]
+
+    def _nombre_dessin(v, line, quoi):
+        return check_number(v, line, quoi)
+
+    def _toile_requise(line):
+        if etat_dessin['toile'] is None:
+            raise LazError("appelle d'abord toile(largeur, hauteur) pour créer ta zone de dessin", line)
+        return etat_dessin['toile']
+
+    def _fmt(v):
+        if isinstance(v, float) and v.is_integer():
+            return str(int(v))
+        return str(v)
+
+    def b_toile(args, line):
+        _need(args, 2, 'toile', line)
+        w = _nombre_dessin(args[0], line, 'toile()')
+        h = _nombre_dessin(args[1], line, 'toile()')
+        if w < 1 or h < 1 or w > 2000 or h > 2000:
+            raise LazError('toile() : dimensions entre 1 et 2000', line)
+        etat_dessin['toile'] = {'w': w, 'h': h, 'formes': []}
+        return None
+
+    def b_fond(args, line):
+        _need(args, 1, 'fond', line)
+        t = _toile_requise(line)
+        t['formes'].append(('fond', _couleur_css(args[0], line)))
+        return None
+
+    def b_trace_ligne(args, line):
+        _need(args, 5, 'trace_ligne', line)
+        t = _toile_requise(line)
+        x1, y1, x2, y2 = (_nombre_dessin(a, line, 'trace_ligne()') for a in args[:4])
+        t['formes'].append(('ligne', x1, y1, x2, y2, _couleur_css(args[4], line)))
+        return None
+
+    def _rect(args, line, plein, nom):
+        _need(args, 5, nom, line)
+        t = _toile_requise(line)
+        x, y, w, h = (_nombre_dessin(a, line, nom + '()') for a in args[:4])
+        t['formes'].append(('rect', x, y, w, h, _couleur_css(args[4], line), plein))
+        return None
+
+    def b_trace_rect(args, line):
+        return _rect(args, line, False, 'trace_rect')
+
+    def b_rect_plein(args, line):
+        return _rect(args, line, True, 'rect_plein')
+
+    def _cercle(args, line, plein, nom):
+        _need(args, 4, nom, line)
+        t = _toile_requise(line)
+        x, y, r = (_nombre_dessin(a, line, nom + '()') for a in args[:3])
+        t['formes'].append(('cercle', x, y, r, _couleur_css(args[3], line), plein))
+        return None
+
+    def b_trace_cercle(args, line):
+        return _cercle(args, line, False, 'trace_cercle')
+
+    def b_cercle_plein(args, line):
+        return _cercle(args, line, True, 'cercle_plein')
+
+    def b_trace_texte(args, line):
+        _need(args, 4, 'trace_texte', line)
+        t = _toile_requise(line)
+        x = _nombre_dessin(args[0], line, 'trace_texte()')
+        y = _nombre_dessin(args[1], line, 'trace_texte()')
+        t['formes'].append(('texte', x, y, to_text(args[2]), _couleur_css(args[3], line)))
+        return None
+
+    def b_sauve_dessin(args, line):
+        _need(args, 1, 'sauve_dessin', line)
+        t = _toile_requise(line)
+        svg = svg_du_dessin(t)
+        chemin = to_text(args[0])
+        try:
+            with open(chemin, 'w', encoding='utf-8') as f:
+                f.write(svg)
+        except OSError as e:
+            raise LazError(f"impossible d'écrire « {chemin} » : {e}", line)
+        return None
+
+    def svg_du_dessin(t):
+        W, H = _fmt(t['w']), _fmt(t['h'])
+        out = [f"<svg xmlns='http://www.w3.org/2000/svg' width='{W}' height='{H}' viewBox='0 0 {W} {H}'>"]
+        out.append(f"<rect width='{W}' height='{H}' fill='#0d1117'/>")
+        for f in t['formes']:
+            k = f[0]
+            if k == 'fond':
+                out.append(f"<rect width='{W}' height='{H}' fill='{f[1]}'/>")
+            elif k == 'ligne':
+                out.append(f"<line x1='{_fmt(f[1])}' y1='{_fmt(f[2])}' x2='{_fmt(f[3])}' y2='{_fmt(f[4])}' stroke='{f[5]}' stroke-width='3' stroke-linecap='round'/>")
+            elif k == 'rect':
+                remplir = f[5] if f[6] else 'none'
+                contour = '' if f[6] else f" stroke='{f[5]}' stroke-width='3'"
+                out.append(f"<rect x='{_fmt(f[1])}' y='{_fmt(f[2])}' width='{_fmt(f[3])}' height='{_fmt(f[4])}' fill='{remplir}'{contour}/>")
+            elif k == 'cercle':
+                remplir = f[4] if f[5] else 'none'
+                contour = '' if f[5] else f" stroke='{f[4]}' stroke-width='3'"
+                out.append(f"<circle cx='{_fmt(f[1])}' cy='{_fmt(f[2])}' r='{_fmt(f[3])}' fill='{remplir}'{contour}/>")
+            elif k == 'texte':
+                txt = f[3].replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                out.append(f"<text x='{_fmt(f[1])}' y='{_fmt(f[2])}' fill='{f[4]}' font-family='monospace' font-size='16'>{txt}</text>")
+        out.append('</svg>')
+        return '\n'.join(out)
+
     def _need(args, count, name, line):
         if len(args) < count:
             raise LazError(f"{name}() demande au moins {count} argument(s), reçu {len(args)}", line)
@@ -900,6 +1025,16 @@ def make_builtins(env):
         'vox_couleur': b_vox_couleur,       # afficher en couleur
         'stylise': b_stylise,               # colorer/styliser un morceau de texte
         'efface_ecran': b_efface_ecran,     # nettoyer l'écran
+        # --- nouveautés v3.1 : le mode dessin ---
+        'toile': b_toile,                   # créer la zone de dessin
+        'fond': b_fond,                     # peindre le fond
+        'trace_ligne': b_trace_ligne,       # ligne
+        'trace_rect': b_trace_rect,         # rectangle (contour)
+        'rect_plein': b_rect_plein,         # rectangle (rempli)
+        'trace_cercle': b_trace_cercle,     # cercle (contour)
+        'cercle_plein': b_cercle_plein,     # cercle (rempli)
+        'trace_texte': b_trace_texte,       # écrire sur le dessin
+        'sauve_dessin': b_sauve_dessin,     # sauvegarder en image SVG
     }
     for name, fn in builtins.items():
         env.declare(name, ('builtin', name, fn))

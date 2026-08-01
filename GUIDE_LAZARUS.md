@@ -1,4 +1,4 @@
-# LAZARUS — Le guide du langage (v3.0)
+# LAZARUS — Le guide du langage (v3.1)
 
 **LAZARUS** est un langage de programmation créé par **Ladji** (2026).
 Sa philosophie : la simplicité de Python + la structure de Java, avec des mots-clés uniques.
@@ -421,6 +421,31 @@ panier["pommes"] += 1
 joueur.vie -= degats
 ```
 
+## 18. Le mode dessin ! 🖼️ *(v3.1)*
+
+LAZARUS sait dessiner. Dans le **playground web**, une toile apparaît et
+se dessine en direct. Avec **Python**, `sauve_dessin()` crée une vraie
+image SVG que tu peux ouvrir dans un navigateur ou partager.
+
+```lazarus
+toile(400, 300)                          # créer la zone de dessin
+
+trace_ligne(0, 250, 400, 250, "vert")    # x1, y1, x2, y2, couleur
+trace_rect(50, 150, 100, 100, "cyan")    # x, y, largeur, hauteur (contour)
+rect_plein(60, 160, 80, 80, "bleu")      # pareil, mais rempli
+trace_cercle(300, 80, 40, "or")          # x, y, rayon (contour)
+cercle_plein(300, 80, 30, "jaune")       # pareil, mais rempli
+trace_texte(150, 40, "Mon dessin", "blanc")
+fond("noir")                             # peindre tout le fond
+
+sauve_dessin("mon_dessin.svg")           # sauvegarder en image
+```
+
+Les couleurs sont les mêmes que `vox_couleur`, plus les codes
+`"#rrggbb"` pour les artistes exigeants. Astuce : combine avec les
+boucles — `pou i dan 1..20 { cercle_plein(i * 20, 100, 5, "cyan") }` —
+et regarde la magie opérer.
+
 ---
 
-*LAZARUS v3.0 — créé par Ladji, propulsé par un interpréteur Python et un moteur JavaScript.*
+*LAZARUS v3.1 — créé par Ladji, propulsé par un interpréteur Python et un moteur JavaScript.*
