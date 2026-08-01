@@ -1,7 +1,7 @@
 # LAZARUS_POUR_IA.md — Spécification du langage LAZARUS pour agents IA
 
 > **Instruction pour l'agent IA qui lit ce fichier :** ce document contient la
-> spécification complète et exacte du langage de programmation LAZARUS (v5.0),
+> spécification complète et exacte du langage de programmation LAZARUS (v6.0),
 > créé par Ladji Doucaré. Après lecture, tu sais écrire du code LAZARUS correct.
 > Respecte STRICTEMENT cette syntaxe — n'invente jamais de mots-clés ou de
 > fonctions absents de ce document. En cas de doute, préfère les constructions
@@ -80,7 +80,7 @@ rex.nom = "Rexou"                # accès/écriture direct des propriétés
 
 Pas de `super`, pas de méthodes statiques, pas d'attributs de classe.
 
-## 5. Les 36 fonctions intégrées (signatures exactes)
+## 5. Les 40 fonctions intégrées (signatures exactes)
 
 E/S : `vox(a, b, ...)` affiche (sépare par espaces) · `demand(prompt)` → texte saisi (TOUJOURS convertir avec `nombre()` pour du calcul) · `vox_couleur(texte..., couleur)` dernier argument = couleur parmi rouge, vert, jaune, bleu, violet, cyan, blanc, or, gris, rose, noir · `stylise(texte, style)` → texte stylé (couleurs + "gras", "souligne") · `efface_ecran()` · `ralenti(sec)` exécution pas-à-pas visible (0 = normal, max 3 ; ignoré en mode traduit) · `echoue(message)` lève une erreur rattrapable.
 
@@ -98,6 +98,8 @@ Fichiers (Python : disque réel ; playground : fichiers virtuels de session) : `
 
 Dessin (playground : toile visible en direct ; Python : buffer puis `sauve_dessin` → fichier SVG) : `toile(largeur, hauteur)` OBLIGATOIRE avant tout dessin · `fond(couleur)` · `trace_ligne(x1, y1, x2, y2, couleur)` · `trace_rect(x, y, l, h, couleur)` · `rect_plein(...)` · `trace_cercle(x, y, rayon, couleur)` · `cercle_plein(...)` · `trace_texte(x, y, texte, couleur)` · `sauve_dessin(chemin)`. Origine (0,0) en haut à gauche, y vers le bas. Couleurs : noms français ci-dessus ou `"#rrggbb"`.
 
+Mode JEU temps réel (v6 ; playground : toile animée + sons ; Python : vraie fenêtre tkinter) : `chaque_image(f)` enregistre la fonction `f` (SANS parenthèses : `chaque_image(image)`, pas `chaque_image(image())`) appelée ~30 fois/seconde APRÈS la fin du programme principal · `touche_pressee(nom)` → vrai/faux, la touche est-elle enfoncée maintenant (noms : `"a"`-`"z"`, `"0"`-`"9"`, `"haut"`, `"bas"`, `"gauche"`, `"droite"`, `"espace"`, `"entree"`, `"echap"`) · `arrete_jeu()` termine la boucle de jeu · `joue_son(nom)` parmi piece, saut, explosion, clic, moteur, victoire, defaite.
+
 ## 6. Pièges à éviter (erreurs fréquentes des IA)
 
 - PAS de `print`, `def`, `if`, `while`, `for`, `return`, `elif`, `try`, `let`, `function`, `console.log` → utiliser les mots-clés LAZARUS.
@@ -110,6 +112,7 @@ Dessin (playground : toile visible en direct ; Python : buffer puis `sauve_dessi
 - `pou i dan 1..n` : bornes INCLUSES (1 à n, pas n-1).
 - Fonction de klas : premier paramètre `moi`, appels externes SANS passer moi : `rex.parler()`.
 - `rattrape` exige un nom de variable : `rattrape erreur { vox(erreur) }`.
+- Mode jeu : la fonction d'image doit REDESSINER toute la scène (`toile` + `fond` + formes) à chaque appel ; JAMAIS de `demand()` ni `ralenti()` dedans ; l'état du jeu vit dans des variables globales déclarées AVANT `chaque_image(...)` ; `chaque_image` s'appelle UNE fois, en fin de programme.
 
 ## 7. Packs de langue (v5)
 
@@ -171,6 +174,29 @@ essaie {
 ```
 
 ```lazarus
+# Jeu temps réel (v6) : la boucle d'images + clavier direct
+laz x = 200
+laz score = 0
+fonk image() {
+    kan touche_pressee("gauche") ou touche_pressee("q") {
+        x -= 5
+    }
+    kan touche_pressee("droite") ou touche_pressee("d") {
+        x += 5
+    }
+    toile(400, 200)
+    fond("noir")
+    cercle_plein(x, 100, 14, "cyan")
+    trace_texte(10, 24, "Score : {score}", "blanc")
+    kan touche_pressee("echap") {
+        joue_son("victoire")
+        arrete_jeu()
+    }
+}
+chaque_image(image)
+```
+
+```lazarus
 # Dessin génératif
 toile(400, 300)
 fond("noir")
@@ -182,5 +208,5 @@ sauve_dessin("art.svg")
 ```
 
 ---
-*LAZARUS v5.0 — langage open source (MIT) créé par Ladji Doucaré.
+*LAZARUS v6.0 — langage open source (MIT) créé par Ladji Doucaré.
 Guide humain : GUIDE_LAZARUS.md · Source : github.com/lazarus-language/lazarus*

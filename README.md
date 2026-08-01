@@ -1,6 +1,6 @@
 # LAZARUS
 
-**Le langage de programmation créé par Ladji** — la structure de Java, la simplicité de Python, et des mots-clés uniques au monde. **Version 5.0 : le premier langage qui parle vos langues** — codez en LAZARUS classique, en anglais, et bientôt en bambara et en wolof. Plus : variables persistantes `garde`, ralenti pédagogique, traducteur vers Python (×50), mode dessin, couleurs, classes.
+**Le langage de programmation créé par Ladji** — la structure de Java, la simplicité de Python, et des mots-clés uniques au monde. **Version 6.0 : LE MODE JEU** — créez de vrais jeux temps réel (30 images/s, clavier en direct, sons) dans le playground ET dans une vraie fenêtre sur votre ordinateur. Plus : mots-clés multilingues, variables persistantes `garde`, ralenti pédagogique, traducteur vers Python (×50), mode dessin, couleurs, classes.
 
 *A programming language created by Ladji — Java's structure, Python's simplicity, and one-of-a-kind keywords. French-friendly error messages. See the [English section](#-english) below.*
 
@@ -60,6 +60,8 @@ python3 lazarus.py exemples/demo.laz
 | `#langue: anglais` + `lazarus --traduire-vers` *(v5)* | mots-clés multilingues |
 | `garde score = 0` *(v5)* | variable qui se souvient entre les exécutions |
 | `ralenti(0.5)` *(v5)* | exécution pas à pas visible (playground) |
+| `chaque_image(f)` + `touche_pressee("droite")` *(v6)* | JEUX temps réel, 30 images/s |
+| `joue_son("piece")` + `arrete_jeu()` *(v6)* | sons et fin de partie |
 
 - Accolades `{ }` pour les blocs, **pas** de point-virgules
 - Listes : `[1, 2, 3]`, intervalle : `1..10`, dictionnaires : `{ "a": 1 }`

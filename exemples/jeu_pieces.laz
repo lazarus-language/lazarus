@@ -1,0 +1,81 @@
+# ===== v6.0 : JEU TEMPS RÉEL — Attrape les pièces ! =====
+# Lance le programme, clique une fois sur la page,
+# puis joue avec les FLÈCHES (ou Z Q S D).
+# Tu as 30 secondes. Le record survit pour toujours (garde) !
+
+garde meilleur = 0
+laz x = 240
+laz y = 170
+laz px = hasard(30, 450)
+laz py = hasard(30, 310)
+laz score = 0
+laz temps = 900          # 30 secondes x 30 images par seconde
+
+fonk image() {
+    temps -= 1
+    # --- les touches, lues EN DIRECT ---
+    kan touche_pressee("gauche") ou touche_pressee("q") {
+        x -= 6
+    }
+    kan touche_pressee("droite") ou touche_pressee("d") {
+        x += 6
+    }
+    kan touche_pressee("haut") ou touche_pressee("z") {
+        y -= 6
+    }
+    kan touche_pressee("bas") ou touche_pressee("s") {
+        y += 6
+    }
+    # --- rester dans la toile ---
+    kan x < 15 {
+        x = 15
+    }
+    kan x > 465 {
+        x = 465
+    }
+    kan y < 15 {
+        y = 15
+    }
+    kan y > 325 {
+        y = 325
+    }
+    # --- la pièce est-elle attrapée ? ---
+    laz dx = x - px
+    kan dx < 0 {
+        dx = 0 - dx
+    }
+    laz dy = y - py
+    kan dy < 0 {
+        dy = 0 - dy
+    }
+    kan dx < 24 et dy < 24 {
+        score += 1
+        joue_son("piece")
+        px = hasard(30, 450)
+        py = hasard(30, 310)
+    }
+    # --- on dessine l'image ---
+    toile(480, 340)
+    fond("#12081f")
+    cercle_plein(px, py, 12, "or")
+    trace_cercle(px, py, 6, "#6b4a00")
+    cercle_plein(x, y, 14, "cyan")
+    cercle_plein(x - 5, y - 4, 3, "noir")
+    cercle_plein(x + 5, y - 4, 3, "noir")
+    laz sec = arondi(temps / 30)
+    trace_texte(10, 24, "Score : {score}   Temps : {sec}s   Record : {meilleur}", "blanc")
+    # --- fin de partie ---
+    kan temps <= 0 {
+        kan score > meilleur {
+            meilleur = score
+        }
+        fond("noir")
+        trace_texte(140, 150, "FINI ! Score : {score}", "or")
+        trace_texte(120, 190, "Record de tous les temps : {meilleur}", "vert")
+        joue_son("victoire")
+        arrete_jeu()
+    }
+}
+
+chaque_image(image)
+vox("C'est parti ! Clique sur la page puis joue aux fleches (ou ZQSD).")

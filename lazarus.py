@@ -44,6 +44,7 @@ import re
 import json
 import time
 import random
+import threading
 import keyword as _pykeyword
 
 # ============================================================
@@ -974,6 +975,47 @@ def make_builtins(env, interp=None):
         # en mode traduit (turbo), ralenti() est ignoré — logique !
         return None
 
+    # --- nouveautés v6.0 : le mode JEU (temps réel) ! ---
+    # chaque_image(f) enregistre une fonction appelée ~30 fois par seconde.
+    # Le programme principal se termine, PUIS la boucle de jeu démarre :
+    # une fenêtre s'ouvre (Python) ou la toile s'anime (playground).
+
+    SONS_CONNUS = ('clic', 'defaite', 'explosion', 'moteur', 'piece', 'saut', 'victoire')
+
+    def b_chaque_image(args, line):
+        _need(args, 1, 'chaque_image', line)
+        f = args[0]
+        if not isinstance(f, LazFunction):
+            raise LazError("chaque_image() attend une fonction : chaque_image(ma_fonction) — sans parenthèses après son nom", line)
+        if interp is None:
+            raise LazError("le mode jeu n'existe pas en version traduite : lance directement « lazarus fichier.laz »", line)
+        interp.frame_fn = f
+        return None
+
+    def b_touche_pressee(args, line):
+        _need(args, 1, 'touche_pressee', line)
+        nom = to_text(args[0]).lower()
+        if interp is not None and interp.jeu_touches is not None:
+            return nom in interp.jeu_touches
+        return False
+
+    def b_arrete_jeu(args, line):
+        if interp is not None:
+            interp.jeu_fini = True
+        return None
+
+    def b_joue_son(args, line):
+        _need(args, 1, 'joue_son', line)
+        nom = to_text(args[0]).lower()
+        if nom not in SONS_CONNUS:
+            raise LazError(f"son inconnu « {nom} » (disponibles : {', '.join(SONS_CONNUS)})", line)
+        if interp is not None and interp.jeu_son is not None:
+            try:
+                interp.jeu_son(nom)
+            except Exception:
+                pass
+        return None
+
     # --- nouveautés v3.1 : le mode dessin ! ---
     # Les commandes s'accumulent, puis sauve_dessin() écrit une image SVG.
 
@@ -1146,9 +1188,16 @@ def make_builtins(env, interp=None):
         'echoue': b_echoue,                 # lever sa propre erreur (avec essaie/rattrape)
         # --- nouveautés v5.0 ---
         'ralenti': b_ralenti,               # exécution au ralenti, pas à pas
+        # --- nouveautés v6.0 : le mode jeu (temps réel) ---
+        'chaque_image': b_chaque_image,     # la boucle de jeu (~30 images/s)
+        'touche_pressee': b_touche_pressee, # cette touche est-elle enfoncée LA maintenant ?
+        'arrete_jeu': b_arrete_jeu,         # terminer la boucle de jeu
+        'joue_son': b_joue_son,             # jouer un petit son (piece, saut, explosion...)
     }
     for name, fn in builtins.items():
         env.declare(name, ('builtin', name, fn))
+    if interp is not None:
+        interp.etat_dessin = etat_dessin
 
 # ============================================================
 #  INTERPRÉTEUR
@@ -1164,6 +1213,10 @@ class Interpreter:
         self.memoire_chemin = None
         self.vitesse = 0           # v5 : ralenti() en secondes par instruction
         self.histoire = []         # v5 : le film des dernières affectations
+        self.frame_fn = None       # v6 : la fonction appelée à chaque image du jeu
+        self.jeu_fini = False      # v6 : arrete_jeu() a été appelé
+        self.jeu_touches = None    # v6 : touches enfoncées (rempli par la fenêtre de jeu)
+        self.jeu_son = None        # v6 : rempli par la fenêtre de jeu
         make_builtins(self.globals, self)
 
     def note_histoire(self, line, name, value):
@@ -2045,6 +2098,134 @@ def repl():
         except RecursionError:
             print('✘ Erreur LAZARUS : récursion trop profonde (boucle infinie ?)')
 
+# ============================================================
+#  LE MODE JEU (v6.0) — une vraie fenêtre, 30 images par seconde
+# ============================================================
+
+def lance_jeu(interp):
+    """Ouvre la fenêtre de jeu et fait tourner interp.frame_fn ~30 fois/s."""
+    try:
+        import tkinter as tk
+    except ImportError:
+        print("✘ Le mode jeu a besoin de tkinter (la boîte à fenêtres de Python).")
+        print("  Windows/Mac : réinstalle Python depuis python.org (tcl/tk est coché par défaut).")
+        print("  Linux : sudo apt install python3-tk")
+        print("  (Sinon, joue dans le playground : https://lazarus-language.github.io/lazarus/)")
+        return
+
+    NOMS_TOUCHES = {
+        'up': 'haut', 'down': 'bas', 'left': 'gauche', 'right': 'droite',
+        'space': 'espace', 'return': 'entree', 'escape': 'echap',
+    }
+
+    # petits sons (Windows : vrais bips ; ailleurs : silencieux)
+    MELODIES = {
+        'piece':     [(988, 60), (1319, 120)],
+        'saut':      [(330, 40), (494, 40), (659, 60)],
+        'explosion': [(150, 80), (110, 80), (80, 140)],
+        'clic':      [(700, 40)],
+        'moteur':    [(90, 120)],
+        'victoire':  [(523, 100), (659, 100), (784, 100), (1047, 220)],
+        'defaite':   [(392, 150), (330, 150), (262, 300)],
+    }
+
+    def joue_son(nom):
+        if sys.platform != 'win32':
+            return
+        def _bips():
+            try:
+                import winsound
+                for (freq, duree) in MELODIES.get(nom, []):
+                    winsound.Beep(freq, duree)
+            except Exception:
+                pass
+        threading.Thread(target=_bips, daemon=True).start()
+
+    t0 = interp.etat_dessin.get('toile')
+    larg = int(t0['w']) if t0 else 480
+    haut = int(t0['h']) if t0 else 360
+
+    root = tk.Tk()
+    root.title('LAZARUS — mode jeu (Échap ou fermer pour quitter)')
+    root.resizable(False, False)
+    canvas = tk.Canvas(root, width=larg, height=haut, bg='#0d1117', highlightthickness=0)
+    canvas.pack()
+
+    interp.jeu_touches = set()
+    interp.jeu_son = joue_son
+
+    def normalise(keysym):
+        k = keysym.lower()
+        return NOMS_TOUCHES.get(k, k)
+
+    root.bind('<KeyPress>', lambda e: interp.jeu_touches.add(normalise(e.keysym)))
+    root.bind('<KeyRelease>', lambda e: interp.jeu_touches.discard(normalise(e.keysym)))
+    root.protocol('WM_DELETE_WINDOW', lambda: setattr(interp, 'jeu_fini', True))
+
+    POLICE = ('Consolas', 12)
+    erreurs = []
+    etat = {'larg': larg, 'haut': haut}
+
+    def dessine():
+        t = interp.etat_dessin.get('toile')
+        if not t:
+            return
+        w, h = int(t['w']), int(t['h'])
+        if w != etat['larg'] or h != etat['haut']:
+            etat['larg'], etat['haut'] = w, h
+            canvas.config(width=w, height=h)
+        canvas.delete('all')
+        for f in t['formes']:
+            genre = f[0]
+            if genre == 'fond':
+                canvas.create_rectangle(0, 0, w, h, fill=f[1], outline='')
+            elif genre == 'ligne':
+                canvas.create_line(f[1], f[2], f[3], f[4], fill=f[5], width=2)
+            elif genre == 'rect':
+                _, x, y, rw, rh, c, plein = f
+                if plein:
+                    canvas.create_rectangle(x, y, x + rw, y + rh, fill=c, outline='')
+                else:
+                    canvas.create_rectangle(x, y, x + rw, y + rh, outline=c, width=2)
+            elif genre == 'cercle':
+                _, x, y, r, c, plein = f
+                if plein:
+                    canvas.create_oval(x - r, y - r, x + r, y + r, fill=c, outline='')
+                else:
+                    canvas.create_oval(x - r, y - r, x + r, y + r, outline=c, width=2)
+            elif genre == 'texte':
+                canvas.create_text(f[1], f[2], text=f[3], fill=f[4], anchor='sw', font=POLICE)
+
+    def image_suivante():
+        if interp.jeu_fini or 'echap' in interp.jeu_touches:
+            try:
+                root.destroy()
+            except Exception:
+                pass
+            return
+        try:
+            interp.call_function(interp.frame_fn, [])
+            dessine()
+        except LazError as e:
+            erreurs.append(e)
+            try:
+                root.destroy()
+            except Exception:
+                pass
+            return
+        root.after(33, image_suivante)
+
+    root.after(33, image_suivante)
+    try:
+        root.mainloop()
+    except KeyboardInterrupt:
+        pass
+    interp.jeu_touches = None
+    interp.jeu_son = None
+    if erreurs:
+        raise erreurs[0]
+
+
 def run_file(path):
     try:
         with open(path, 'r', encoding='utf-8') as f:
@@ -2059,6 +2240,9 @@ def run_file(path):
     interp.charge_memoire()
     try:
         interp.run(source)
+        # v6 : si chaque_image() a été appelé, la partie commence !
+        if interp.frame_fn is not None:
+            lance_jeu(interp)
     except LazError as e:
         print(e)
         if interp.histoire:

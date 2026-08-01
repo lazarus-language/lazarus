@@ -572,6 +572,52 @@ affectations avant l'erreur :
 On voit d'un coup d'œil d'où vient le zéro. Aucune configuration :
 c'est automatique.
 
+## 26. Le mode JEU — temps réel ! 🎮 *(v6)*
+
+Jusqu'ici, tes programmes attendaient l'utilisateur avec `demand()`.
+Le mode jeu change tout : ton code tourne **30 fois par seconde** et lit
+le clavier **en direct**, comme un vrai jeu vidéo.
+
+```lazarus
+laz x = 100
+
+fonk image() {
+    kan touche_pressee("droite") {
+        x += 5
+    }
+    toile(400, 200)
+    fond("noir")
+    cercle_plein(x, 100, 15, "or")
+    kan touche_pressee("echap") {
+        arrete_jeu()
+    }
+}
+
+chaque_image(image)
+```
+
+Les 4 fonctions du mode jeu :
+
+- `chaque_image(ma_fonction)` — enregistre la fonction appelée à chaque
+  image (~30/s). La partie démarre quand le programme principal se termine.
+- `touche_pressee("nom")` — `vrai` si la touche est enfoncée LÀ, maintenant.
+  Noms : lettres (`"a"`...`"z"`), chiffres, `"haut"`, `"bas"`, `"gauche"`,
+  `"droite"`, `"espace"`, `"entree"`, `"echap"`.
+- `arrete_jeu()` — termine la partie.
+- `joue_son("nom")` — un petit son : `piece`, `saut`, `explosion`, `clic`,
+  `moteur`, `victoire`, `defaite`.
+
+Où jouer ?
+
+- **Playground** : la toile s'anime en direct, les sons sortent des
+  haut-parleurs. Clique une fois sur la page pour donner le clavier au jeu.
+- **Sur ton ordinateur** (`lazarus jeu.laz`) : une vraie **fenêtre de jeu**
+  s'ouvre ! (Linux : `sudo apt install python3-tk` si besoin.)
+
+Les règles d'or : redessine TOUTE la scène à chaque image (`toile` + `fond`
++ formes) ; pas de `demand()` ni de `ralenti()` dans la fonction d'image ;
+et `garde` fonctionne — ton record peut survivre entre les parties !
+
 ---
 
-*LAZARUS v5.0 — créé par Ladji. Le premier langage qui parle vos langues.*
+*LAZARUS v6.0 — créé par Ladji. Maintenant, on crée des JEUX.*

@@ -252,7 +252,7 @@
 <header>
   <div class="logo">LAZARUS</div>
   <div class="tagline">Le langage de programmation créé par <b>Ladji</b> — accolades comme Java, simplicité de Python, mots-clés uniques.</div>
-  <div class="version">v5.0</div>
+  <div class="version">v6.0</div>
 </header>
 
 <div class="toolbar">
@@ -272,6 +272,7 @@
     <option value="v4">v4.0 : interpolation + essaie/rattrape</option>
     <option value="v5">v5.0 : garde + ralenti pédagogique</option>
     <option value="anglais">v5.0 : coder en anglais (#langue:)</option>
+    <option value="jeu6">🎮 v6.0 : JEU TEMPS RÉEL — Attrape les pièces !</option>
   </select>
   <button id="btnClear">🗑 Effacer la console</button>
   <span class="hint">Astuce : Ctrl + Entrée pour exécuter</span>
@@ -379,13 +380,16 @@ v4.0 : "Salut {nom}" · echoue
 essaie { } rattrape err { }
 v5.0 : garde x = 0 (se souvient !)
 ralenti(0.5) · #langue: anglais
+v6.0 : chaque_image(ma_fonk)
+touche_pressee("droite") arrete_jeu()
+joue_son("piece") · 30 images/s
 # valeurs : vrai faux walu</pre>
     </div>
   </div>
 </details>
 
 <footer>
-  <b>LAZARUS v5.0</b> — créé par Ladji · Un langage libre et gratuit, pour tout le monde · <a href="https://github.com/lazarus-language/lazarus" style="color:#f0b429">GitHub</a> · pip install lazarus-lang
+  <b>LAZARUS v6.0</b> — créé par Ladji · Un langage libre et gratuit, pour tout le monde · <a href="https://github.com/lazarus-language/lazarus" style="color:#f0b429">GitHub</a> · pip install lazarus-lang
 </footer>
 
 <script>
@@ -994,6 +998,8 @@ const Lazarus = (function () {
       this.histoire = [];
       this.globals = new Env(null);
       this.steps = 0;
+      this.frameFn = null;   // v6 : la fonction appelée à chaque image du jeu
+      this.jeuFini = false;  // v6 : arrete_jeu() a été appelé
       this.makeBuiltins();
     }
 
@@ -1307,6 +1313,32 @@ const Lazarus = (function () {
         self.need(args, 1, 'ralenti', line);
         const v = checkNumber(args[0], line, 'ralenti()');
         self.vitesse = Math.min(3, Math.max(0, v));
+        return null;
+      });
+
+      // --- nouveautés v6.0 : le mode JEU (temps réel) ---
+      const SONS_CONNUS = ['clic', 'defaite', 'explosion', 'moteur', 'piece', 'saut', 'victoire'];
+      B('chaque_image', async (args, line) => {
+        self.need(args, 1, 'chaque_image', line);
+        if (!(args[0] instanceof LazFunction)) {
+          throw new LazError('chaque_image() attend une fonction : chaque_image(ma_fonction) — sans parenthèses après son nom', line);
+        }
+        self.frameFn = args[0];
+        return null;
+      });
+      B('touche_pressee', async (args, line) => {
+        self.need(args, 1, 'touche_pressee', line);
+        const nom = toText(args[0]).toLowerCase();
+        return self.io.toucheEnfoncee ? !!self.io.toucheEnfoncee(nom) : false;
+      });
+      B('arrete_jeu', async () => { self.jeuFini = true; return null; });
+      B('joue_son', async (args, line) => {
+        self.need(args, 1, 'joue_son', line);
+        const nom = toText(args[0]).toLowerCase();
+        if (!SONS_CONNUS.includes(nom)) {
+          throw new LazError(`son inconnu « ${nom} » (disponibles : ${SONS_CONNUS.join(', ')})`, line);
+        }
+        if (self.io.onSon) { try { self.io.onSon(nom); } catch (e) { } }
         return null;
       });
     }
@@ -1721,6 +1753,18 @@ const Lazarus = (function () {
     });
     try {
       await interp.run(source);
+      // v6 : si chaque_image() a été appelé, la boucle de jeu démarre (~30 images/s)
+      if (interp.frameFn) {
+        if (interp.io.onJeuDemarre) interp.io.onJeuDemarre();
+        while (!interp.jeuFini) {
+          if (interp.io.shouldStop && interp.io.shouldStop()) throw new StopEx();
+          interp.steps = 0; // chaque image repart de zéro (le jeu peut durer des heures)
+          await interp.callFunction(interp.frameFn, []);
+          if (interp.io.onFrame) await interp.io.onFrame();
+          else await new Promise(r => setTimeout(r, 33));
+        }
+        if (interp.io.onJeuTermine) interp.io.onJeuTermine();
+      }
       if (interp.gardeNoms.size && interp.io.onSauveMemoire) {
         interp.io.onSauveMemoire(interp.collecteGarde());
       }
@@ -1742,7 +1786,7 @@ const Lazarus = (function () {
     }
   }
 
-  return { run, toText, LazError, version: '3.0' };
+  return { run, toText, LazError, version: '6.0' };
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = Lazarus;
@@ -2028,6 +2072,88 @@ keep runs = 0
 runs += 1
 vox("You ran this {runs} times.")
 `;
+  EX.jeu6 = `# ===== v6.0 : JEU TEMPS RÉEL — Attrape les pièces ! =====
+# Lance le programme, clique une fois sur la page,
+# puis joue avec les FLÈCHES (ou Z Q S D).
+# Tu as 30 secondes. Le record survit pour toujours (garde) !
+
+garde meilleur = 0
+laz x = 240
+laz y = 170
+laz px = hasard(30, 450)
+laz py = hasard(30, 310)
+laz score = 0
+laz temps = 900          # 30 secondes x 30 images par seconde
+
+fonk image() {
+    temps -= 1
+    # --- les touches, lues EN DIRECT ---
+    kan touche_pressee("gauche") ou touche_pressee("q") {
+        x -= 6
+    }
+    kan touche_pressee("droite") ou touche_pressee("d") {
+        x += 6
+    }
+    kan touche_pressee("haut") ou touche_pressee("z") {
+        y -= 6
+    }
+    kan touche_pressee("bas") ou touche_pressee("s") {
+        y += 6
+    }
+    # --- rester dans la toile ---
+    kan x < 15 {
+        x = 15
+    }
+    kan x > 465 {
+        x = 465
+    }
+    kan y < 15 {
+        y = 15
+    }
+    kan y > 325 {
+        y = 325
+    }
+    # --- la pièce est-elle attrapée ? ---
+    laz dx = x - px
+    kan dx < 0 {
+        dx = 0 - dx
+    }
+    laz dy = y - py
+    kan dy < 0 {
+        dy = 0 - dy
+    }
+    kan dx < 24 et dy < 24 {
+        score += 1
+        joue_son("piece")
+        px = hasard(30, 450)
+        py = hasard(30, 310)
+    }
+    # --- on dessine l'image ---
+    toile(480, 340)
+    fond("#12081f")
+    cercle_plein(px, py, 12, "or")
+    trace_cercle(px, py, 6, "#6b4a00")
+    cercle_plein(x, y, 14, "cyan")
+    cercle_plein(x - 5, y - 4, 3, "noir")
+    cercle_plein(x + 5, y - 4, 3, "noir")
+    laz sec = arondi(temps / 30)
+    trace_texte(10, 24, "Score : {score}   Temps : {sec}s   Record : {meilleur}", "blanc")
+    # --- fin de partie ---
+    kan temps <= 0 {
+        kan score > meilleur {
+            meilleur = score
+        }
+        fond("noir")
+        trace_texte(140, 150, "FINI ! Score : {score}", "or")
+        trace_texte(120, 190, "Record de tous les temps : {meilleur}", "vert")
+        joue_son("victoire")
+        arrete_jeu()
+    }
+}
+
+chaque_image(image)
+vox("C'est parti ! Clique sur la page puis joue aux fleches (ou ZQSD).")
+`;
   EX.etoiles = `# ===== Pyramide d'étoiles =====
 laz hauteur = 7
 
@@ -2198,8 +2324,10 @@ vox("LAZARUS !")
 
   function onDraw(cmd) {
     if (cmd.type === 'toile') {
-      toileCanvas.width = cmd.w;
-      toileCanvas.height = cmd.h;
+      // v6 : en mode jeu, toile() est rappelé 30 fois/s — on ne
+      // redimensionne que si nécessaire (sinon ça scintille)
+      if (toileCanvas.width !== cmd.w) toileCanvas.width = cmd.w;
+      if (toileCanvas.height !== cmd.h) toileCanvas.height = cmd.h;
       canvasWrap.style.display = 'block';
       toileCtx = toileCanvas.getContext('2d');
       toileCtx.fillStyle = '#0d1117';
@@ -2230,10 +2358,72 @@ vox("LAZARUS !")
     }
   }
 
+  // ---------- v6 : le mode JEU — clavier, sons, 30 images/s ----------
+  const touches = new Set();
+  const NOMS_TOUCHES = {
+    'arrowup': 'haut', 'arrowdown': 'bas', 'arrowleft': 'gauche',
+    'arrowright': 'droite', ' ': 'espace', 'enter': 'entree', 'escape': 'echap',
+  };
+  function nomTouche(e) {
+    const k = e.key.toLowerCase();
+    return NOMS_TOUCHES[k] || k;
+  }
+  document.addEventListener('keydown', (e) => {
+    if (!running) return;
+    if (e.target && (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT')) return;
+    touches.add(nomTouche(e));
+    const k = e.key.toLowerCase();
+    if (k.startsWith('arrow') || k === ' ') e.preventDefault();
+  });
+  document.addEventListener('keyup', (e) => { touches.delete(nomTouche(e)); });
+  window.addEventListener('blur', () => touches.clear());
+
+  let audioCtx = null;
+  function joueSon(nom) {
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const t0 = audioCtx.currentTime;
+      const note = (freq, debut, duree, type, vol) => {
+        const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+        o.type = type || 'square';
+        o.frequency.setValueAtTime(freq, t0 + debut);
+        g.gain.setValueAtTime(vol || 0.12, t0 + debut);
+        g.gain.exponentialRampToValueAtTime(0.001, t0 + debut + duree);
+        o.connect(g); g.connect(audioCtx.destination);
+        o.start(t0 + debut); o.stop(t0 + debut + duree + 0.02);
+        return o;
+      };
+      if (nom === 'piece') { note(988, 0, 0.09); note(1319, 0.09, 0.2); }
+      else if (nom === 'clic') { note(700, 0, 0.05, 'square', 0.08); }
+      else if (nom === 'saut') {
+        const o = note(200, 0, 0.18, 'square', 0.1);
+        o.frequency.exponentialRampToValueAtTime(600, t0 + 0.18);
+      }
+      else if (nom === 'moteur') { note(85, 0, 0.25, 'sawtooth', 0.1); }
+      else if (nom === 'victoire') { note(523, 0, 0.12); note(659, 0.12, 0.12); note(784, 0.24, 0.12); note(1047, 0.36, 0.3); }
+      else if (nom === 'defaite') { note(392, 0, 0.18, 'triangle'); note(330, 0.18, 0.18, 'triangle'); note(262, 0.36, 0.4, 'triangle'); }
+      else if (nom === 'explosion') {
+        const dur = 0.4;
+        const buf = audioCtx.createBuffer(1, Math.floor(audioCtx.sampleRate * dur), audioCtx.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+        const src = audioCtx.createBufferSource();
+        src.buffer = buf;
+        const g = audioCtx.createGain();
+        g.gain.setValueAtTime(0.25, t0);
+        g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+        src.connect(g); g.connect(audioCtx.destination);
+        src.start(t0);
+      }
+    } catch (e) { }
+  }
+
   async function runProgram() {
     if (running) return;
     running = true;
     stopFlag = false;
+    touches.clear();
     btnRun.style.display = 'none';
     btnStop.style.display = 'inline-block';
     addLine('▶ Exécution...', 'sys');
@@ -2249,6 +2439,11 @@ vox("LAZARUS !")
       memoire: chargeMemoire(),
       onSauveMemoire: sauveMemoire,
       onStep: onStep,
+      // v6 : le mode jeu
+      toucheEnfoncee: (nom) => touches.has(nom),
+      onFrame: () => new Promise(r => setTimeout(r, 33)),
+      onSon: joueSon,
+      onJeuDemarre: () => addLine('🎮 Partie lancée ! Clique une fois sur la page, puis joue au clavier. (⏹ Arrêter pour quitter)', 'sys'),
     };
 
     const result = await Lazarus.run(editor.value, io);
@@ -2283,7 +2478,7 @@ vox("LAZARUS !")
     toileCtx = null;
   });
 
-  addLine('Bienvenue dans LAZARUS v5.0 ! Clique sur ▶ Exécuter, ou charge un exemple — essaie « la couleur » !', 'sys');
+  addLine('Bienvenue dans LAZARUS v6.0 ! Charge l’exemple 🎮 « JEU TEMPS RÉEL » — oui, un vrai jeu au clavier !', 'sys');
 })();
 </script>
 
