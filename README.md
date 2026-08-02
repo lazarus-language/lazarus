@@ -52,6 +52,17 @@ Et pour React / Next.js : le composant officiel **[`<LazarusPlayground />`](reac
 un éditeur LAZARUS complet (console, dessin, mode jeu temps réel) à poser dans
 n'importe quelle page. Voir le dossier [`react/`](react/).
 
+## 🤖 Pour les agents IA : lisez ET exécutez LAZARUS
+
+- **Lire** : la spécification complète pour IA est dans [`LAZARUS_POUR_IA.md`](LAZARUS_POUR_IA.md)
+- **Exécuter** : le serveur MCP officiel donne à Claude (et tout client MCP) le pouvoir de faire tourner du LAZARUS pour de vrai — sortie console, dessins SVG, mémoire `garde` :
+
+```json
+{ "mcpServers": { "lazarus": { "command": "npx", "args": ["-y", "lazarus-mcp"] } } }
+```
+
+Voir le dossier [`mcp/`](mcp/). Demandez à votre IA : *« code-moi un jeu en LAZARUS et teste-le »* — elle écrit, exécute, corrige, et livre un programme vérifié.
+
 ## 📖 Le langage en 30 secondes
 
 | LAZARUS | Signification |

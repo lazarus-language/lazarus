@@ -1,0 +1,25 @@
+{
+  "name": "lazarus-mcp",
+  "version": "1.0.0",
+  "description": "Serveur MCP du langage LAZARUS : permet à n'importe quel agent IA (Claude, etc.) d'ÉCRIRE et d'EXÉCUTER du code LAZARUS pour de vrai — sortie console, dessins SVG, mémoire persistante.",
+  "type": "module",
+  "bin": {
+    "lazarus-mcp": "server.js"
+  },
+  "files": [
+    "server.js",
+    "LAZARUS_POUR_IA.md",
+    "README.md",
+    "LICENSE"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "lazarus-lang": "^8.0.0",
+    "zod": "^3.23.0"
+  },
+  "keywords": ["lazarus", "mcp", "model-context-protocol", "ai", "agent", "langage", "french", "education"],
+  "author": "Ladji Doucaré",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/lazarus-language/lazarus.git" },
+  "homepage": "https://lazarus-language.github.io/lazarus/"
+}
