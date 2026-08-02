@@ -654,6 +654,21 @@ L'application reste vivante après la fin du programme : elle attend les clics.
 survivent, `joue_son()` pour des clics sonores, et même la toile de dessin ou
 `chaque_image` pour une appli qui dessine !
 
+## 28. LAZARUS partout — et il parle ! 🗣️📱 *(v8)*
+
+**La voix.** `dis("Bonjour !")` : ton programme parle à voix haute, en
+français. Dans le playground, c'est la voix du navigateur ; sur ton
+ordinateur, celle du système (Windows/Mac ; Linux : `spd-say` ou `espeak`).
+Combine avec `demand()` et tes programmes deviennent de vrais interlocuteurs.
+
+**Le partage par lien.** Le bouton 🔗 Partager du playground transforme ton
+programme en lien : envoie-le sur WhatsApp, celui qui l'ouvre reçoit ton code
+prêt à exécuter. Un jeu codé à Bamako se joue à Paris dix secondes plus tard.
+
+**L'appli installable.** Sur téléphone, le navigateur propose « Ajouter à
+l'écran d'accueil » : LAZARUS devient une appli avec son icône — et le
+playground fonctionne ensuite MÊME SANS INTERNET.
+
 ---
 
-*LAZARUS v7.0 — créé par Ladji. Des jeux, des applis : un vrai langage.*
+*LAZARUS v8.0 — créé par Ladji. Dans ta poche, et il parle.*

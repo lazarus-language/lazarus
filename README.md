@@ -1,6 +1,6 @@
 # LAZARUS
 
-**Le langage de programmation créé par Ladji** — la structure de Java, la simplicité de Python, et des mots-clés uniques au monde. **Version 7.0 : LE MODE INTERFACE** — créez de vraies applications (boutons, champs de saisie, textes vivants) en LAZARUS, dans le playground ET dans une fenêtre sur votre ordinateur. Plus : mode JEU temps réel (30 images/s, clavier, sons), mots-clés multilingues, variables persistantes `garde`, ralenti pédagogique, traducteur vers Python (×50), mode dessin, couleurs, classes.
+**Le langage de programmation créé par Ladji** — la structure de Java, la simplicité de Python, et des mots-clés uniques au monde. **Version 8.0 : LAZARUS PARTOUT** — le playground s'installe comme une appli sur téléphone (et marche hors-ligne), vos programmes se partagent par simple lien, et `dis("texte")` les fait PARLER à voix haute. Plus : LE MODE INTERFACE — créez de vraies applications (boutons, champs de saisie, textes vivants) en LAZARUS, dans le playground ET dans une fenêtre sur votre ordinateur. Plus : mode JEU temps réel (30 images/s, clavier, sons), mots-clés multilingues, variables persistantes `garde`, ralenti pédagogique, traducteur vers Python (×50), mode dessin, couleurs, classes.
 
 *A programming language created by Ladji — Java's structure, Python's simplicity, and one-of-a-kind keywords. French-friendly error messages. See the [English section](#-english) below.*
 
@@ -81,6 +81,8 @@ n'importe quelle page. Voir le dossier [`react/`](react/).
 | `chaque_image(f)` + `touche_pressee("droite")` *(v6)* | JEUX temps réel, 30 images/s |
 | `joue_son("piece")` + `arrete_jeu()` *(v6)* | sons et fin de partie |
 | `titre` + `bouton("OK", action)` + `champ` *(v7)* | de vraies APPLICATIONS à boutons |
+| `dis("Bonjour !")` *(v8)* | le programme PARLE (synthèse vocale) |
+| 🔗 Partager + appli installable hors-ligne *(v8)* | ton code en un lien, LAZARUS dans la poche |
 | `valeur_de(id)` + `change_texte(id, txt)` *(v7)* | lire et mettre à jour l'interface |
 
 - Accolades `{ }` pour les blocs, **pas** de point-virgules

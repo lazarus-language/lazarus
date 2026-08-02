@@ -45,6 +45,7 @@ import json
 import time
 import random
 import threading
+import subprocess
 import keyword as _pykeyword
 
 # ============================================================
@@ -1026,6 +1027,31 @@ def make_builtins(env, interp=None):
                 pass
         return None
 
+    # --- nouveauté v8.0 : LAZARUS PARLE ! ---
+    def b_dis(args, line):
+        _need(args, 1, 'dis', line)
+        texte = ' '.join(to_text(a) for a in args)
+        try:
+            if sys.platform == 'win32':
+                sur = texte.replace("'", ' ').replace('"', ' ')
+                subprocess.run(['PowerShell', '-NoProfile', '-Command',
+                                "Add-Type -AssemblyName System.Speech; "
+                                "$s = New-Object System.Speech.Synthesis.SpeechSynthesizer; "
+                                "$s.Speak('" + sur + "')"],
+                               capture_output=True, timeout=60)
+            elif sys.platform == 'darwin':
+                subprocess.run(['say', texte], capture_output=True, timeout=60)
+            else:
+                for cmd in (['spd-say', '-w', texte], ['espeak', '-v', 'fr', texte]):
+                    try:
+                        subprocess.run(cmd, capture_output=True, timeout=60)
+                        break
+                    except FileNotFoundError:
+                        continue
+        except Exception:
+            pass
+        return None
+
     # --- nouveautés v7.0 : le MODE INTERFACE ! ---
     # titre / etiquette / bouton / champ construisent une vraie application.
     # Playground : widgets HTML au-dessus de la console.
@@ -1276,6 +1302,7 @@ def make_builtins(env, interp=None):
         'touche_pressee': b_touche_pressee, # cette touche est-elle enfoncée LA maintenant ?
         'arrete_jeu': b_arrete_jeu,         # terminer la boucle de jeu (ou l'appli)
         'joue_son': b_joue_son,             # jouer un petit son (piece, saut, explosion...)
+        'dis': b_dis,                       # v8 : LAZARUS parle à voix haute !
         # --- nouveautés v7.0 : le mode interface ---
         'titre': b_titre,                   # grand titre de l'application
         'etiquette': b_etiquette,           # texte affiché (renvoie son id)
