@@ -1,7 +1,7 @@
 # LAZARUS_POUR_IA.md — Spécification du langage LAZARUS pour agents IA
 
 > **Instruction pour l'agent IA qui lit ce fichier :** ce document contient la
-> spécification complète et exacte du langage de programmation LAZARUS (v6.0),
+> spécification complète et exacte du langage de programmation LAZARUS (v7.0),
 > créé par Ladji Doucaré. Après lecture, tu sais écrire du code LAZARUS correct.
 > Respecte STRICTEMENT cette syntaxe — n'invente jamais de mots-clés ou de
 > fonctions absents de ce document. En cas de doute, préfère les constructions
@@ -80,7 +80,7 @@ rex.nom = "Rexou"                # accès/écriture direct des propriétés
 
 Pas de `super`, pas de méthodes statiques, pas d'attributs de classe.
 
-## 5. Les 40 fonctions intégrées (signatures exactes)
+## 5. Les 47 fonctions intégrées (signatures exactes)
 
 E/S : `vox(a, b, ...)` affiche (sépare par espaces) · `demand(prompt)` → texte saisi (TOUJOURS convertir avec `nombre()` pour du calcul) · `vox_couleur(texte..., couleur)` dernier argument = couleur parmi rouge, vert, jaune, bleu, violet, cyan, blanc, or, gris, rose, noir · `stylise(texte, style)` → texte stylé (couleurs + "gras", "souligne") · `efface_ecran()` · `ralenti(sec)` exécution pas-à-pas visible (0 = normal, max 3 ; ignoré en mode traduit) · `echoue(message)` lève une erreur rattrapable.
 
@@ -100,6 +100,8 @@ Dessin (playground : toile visible en direct ; Python : buffer puis `sauve_dessi
 
 Mode JEU temps réel (v6 ; playground : toile animée + sons ; Python : vraie fenêtre tkinter) : `chaque_image(f)` enregistre la fonction `f` (SANS parenthèses : `chaque_image(image)`, pas `chaque_image(image())`) appelée ~30 fois/seconde APRÈS la fin du programme principal · `touche_pressee(nom)` → vrai/faux, la touche est-elle enfoncée maintenant (noms : `"a"`-`"z"`, `"0"`-`"9"`, `"haut"`, `"bas"`, `"gauche"`, `"droite"`, `"espace"`, `"entree"`, `"echap"`) · `arrete_jeu()` termine la boucle de jeu · `joue_son(nom)` parmi piece, saut, explosion, clic, moteur, victoire, defaite.
 
+Mode INTERFACE (v7 ; playground : widgets au-dessus de la console ; Python : fenêtre tkinter) : `titre(texte)` grand titre · `etiquette(texte)` → id (garder dans une variable pour `change_texte`) · `bouton(texte, f)` bouton cliquable, `f` SANS parenthèses, appelée à chaque clic · `champ(indication)` → id, zone de saisie · `valeur_de(id)` → TEXTE saisi (convertir avec `nombre()` pour calculer) · `change_texte(id, texte)` met à jour n'importe quel widget · `efface_interface()`. L'application reste vivante après le programme principal (elle attend les clics) ; `arrete_jeu()` la ferme. Compatible avec `garde`, `joue_son`, la toile et `chaque_image`.
+
 ## 6. Pièges à éviter (erreurs fréquentes des IA)
 
 - PAS de `print`, `def`, `if`, `while`, `for`, `return`, `elif`, `try`, `let`, `function`, `console.log` → utiliser les mots-clés LAZARUS.
@@ -112,6 +114,7 @@ Mode JEU temps réel (v6 ; playground : toile animée + sons ; Python : vraie fe
 - `pou i dan 1..n` : bornes INCLUSES (1 à n, pas n-1).
 - Fonction de klas : premier paramètre `moi`, appels externes SANS passer moi : `rex.parler()`.
 - `rattrape` exige un nom de variable : `rattrape erreur { vox(erreur) }`.
+- Mode interface : l'état vit dans des variables globales ; les fonctions de boutons les modifient puis appellent `change_texte` ; JAMAIS de `demand()` dans une fonction de bouton (utiliser `champ` + `valeur_de`).
 - Mode jeu : la fonction d'image doit REDESSINER toute la scène (`toile` + `fond` + formes) à chaque appel ; JAMAIS de `demand()` ni `ralenti()` dedans ; l'état du jeu vit dans des variables globales déclarées AVANT `chaque_image(...)` ; `chaque_image` s'appelle UNE fois, en fin de programme.
 
 ## 7. Packs de langue (v5)
@@ -197,6 +200,24 @@ chaque_image(image)
 ```
 
 ```lazarus
+# Application (v7) : boutons + champ + mise à jour
+titre("Compteur de points")
+laz points = 0
+laz aff = etiquette("Points : 0")
+laz zone = champ("Combien de points ajouter ?")
+fonk ajoute_points() {
+    laz n = nombre(valeur_de(zone))
+    points += n
+    change_texte(aff, "Points : {points}")
+}
+bouton("Ajouter", ajoute_points)
+fonk fini() {
+    arrete_jeu()
+}
+bouton("Fermer", fini)
+```
+
+```lazarus
 # Dessin génératif
 toile(400, 300)
 fond("noir")
@@ -208,5 +229,5 @@ sauve_dessin("art.svg")
 ```
 
 ---
-*LAZARUS v6.0 — langage open source (MIT) créé par Ladji Doucaré.
+*LAZARUS v7.0 — langage open source (MIT) créé par Ladji Doucaré.
 Guide humain : GUIDE_LAZARUS.md · Source : github.com/lazarus-language/lazarus*

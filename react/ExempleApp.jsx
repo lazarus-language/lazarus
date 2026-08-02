@@ -40,6 +40,22 @@ chaque_image(image)
 vox("Le jeu tourne a 30 images/s... dans React !")
 `;
 
+
+const DEMO_APPLI = `# Une APPLI a boutons (v7) dans React !
+titre("Mini compteur")
+laz n = 0
+laz aff = etiquette("Valeur : 0")
+fonk plus() {
+    n += 1
+    change_texte(aff, "Valeur : {n}")
+}
+bouton("+1", plus)
+fonk fin() {
+    arrete_jeu()
+}
+bouton("Fermer l'appli", fin)
+`;
+
 export default function App() {
   return (
     <div style={{ maxWidth: 1000, margin: '0 auto', padding: 24, fontFamily: "'Segoe UI', system-ui, sans-serif", color: '#e6edf3' }}>
@@ -52,6 +68,8 @@ export default function App() {
       <LazarusPlayground codeInitial={DEMO} hauteur={330} />
       <h2 style={{ color: '#a78bfa', fontSize: '1.1rem', marginTop: 28 }}>2. Le mode JEU (v6) — temps réel dans React</h2>
       <LazarusPlayground codeInitial={DEMO_JEU} hauteur={420} titre="LAZARUS 🎮" />
+      <h2 style={{ color: '#a78bfa', fontSize: '1.1rem', marginTop: 28 }}>3. Le mode INTERFACE (v7) — une appli à boutons dans React</h2>
+      <LazarusPlayground codeInitial={DEMO_APPLI} hauteur={360} titre="LAZARUS 🖥️" />
       <p style={{ color: '#8b949e', fontSize: '.85rem', marginTop: 24 }}>
         Un langage créé par Ladji Doucaré · <a style={{ color: '#f0b429' }} href="https://lazarus-language.github.io/lazarus/">Playground officiel</a> · <a style={{ color: '#f0b429' }} href="https://www.npmjs.com/package/lazarus-lang">npm</a>
       </p>

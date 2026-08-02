@@ -164,6 +164,52 @@
     border-radius: 8px;
     background: #0d1117;
   }
+  /* ---------- v7 : le mode interface ---------- */
+  #appWrap {
+    display: none;
+    padding: 14px;
+    background: #0f1420;
+    border-bottom: 1px solid var(--border);
+  }
+  #appWrap .app-titre {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--gold);
+    margin: 4px 0 10px;
+  }
+  #appWrap .app-etiquette {
+    color: var(--text);
+    margin: 6px 0;
+    font-size: .95rem;
+    white-space: pre-wrap;
+  }
+  #appWrap .app-bouton {
+    background: linear-gradient(135deg, #b8860b, #f0b429);
+    color: #1a1200;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 18px;
+    font-weight: 700;
+    font-size: .92rem;
+    cursor: pointer;
+    margin: 6px 8px 6px 0;
+  }
+  #appWrap .app-bouton:active { transform: scale(.96); }
+  #appWrap .app-champ {
+    display: block;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: .92rem;
+    padding: 8px 12px;
+    margin: 6px 0;
+    outline: none;
+    min-width: 240px;
+  }
+  #appWrap .app-champ:focus { border-color: var(--gold-dim); }
+
   #console {
     flex: 1;
     overflow-y: auto;
@@ -252,7 +298,7 @@
 <header>
   <div class="logo">LAZARUS</div>
   <div class="tagline">Le langage de programmation créé par <b>Ladji</b> — accolades comme Java, simplicité de Python, mots-clés uniques.</div>
-  <div class="version">v6.0</div>
+  <div class="version">v7.0</div>
 </header>
 
 <div class="toolbar">
@@ -273,6 +319,7 @@
     <option value="v5">v5.0 : garde + ralenti pédagogique</option>
     <option value="anglais">v5.0 : coder en anglais (#langue:)</option>
     <option value="jeu6">🎮 v6.0 : JEU TEMPS RÉEL — Attrape les pièces !</option>
+    <option value="v7app">🖥️ v7.0 : MODE INTERFACE — Ta première appli !</option>
   </select>
   <button id="btnClear">🗑 Effacer la console</button>
   <span class="hint">Astuce : Ctrl + Entrée pour exécuter</span>
@@ -289,6 +336,7 @@
   <div class="pane">
     <div class="pane-title">🖥️ Console</div>
     <div id="varsPanel"></div>
+    <div id="appWrap"></div>
     <div id="canvasWrap"><canvas id="toileCanvas"></canvas></div>
     <div id="console"></div>
   </div>
@@ -383,13 +431,16 @@ ralenti(0.5) · #langue: anglais
 v6.0 : chaque_image(ma_fonk)
 touche_pressee("droite") arrete_jeu()
 joue_son("piece") · 30 images/s
+v7.0 : titre bouton champ etiquette
+valeur_de(id) change_texte(id, txt)
+efface_interface() → des APPLIS !
 # valeurs : vrai faux walu</pre>
     </div>
   </div>
 </details>
 
 <footer>
-  <b>LAZARUS v6.0</b> — créé par Ladji · Un langage libre et gratuit, pour tout le monde · <a href="https://github.com/lazarus-language/lazarus" style="color:#f0b429">GitHub</a> · pip install lazarus-lang
+  <b>LAZARUS v7.0</b> — créé par Ladji · Un langage libre et gratuit, pour tout le monde · <a href="https://github.com/lazarus-language/lazarus" style="color:#f0b429">GitHub</a> · pip install lazarus-lang
 </footer>
 
 <script>
@@ -1000,6 +1051,9 @@ const Lazarus = (function () {
       this.steps = 0;
       this.frameFn = null;   // v6 : la fonction appelée à chaque image du jeu
       this.jeuFini = false;  // v6 : arrete_jeu() a été appelé
+      this.aInterface = false;          // v7 : des widgets ont été créés
+      this.actionsBoutons = new Map();  // v7 : id de bouton -> fonction LAZARUS
+      this.compteurWidget = 0;          // v7 : générateur d'identifiants
       this.makeBuiltins();
     }
 
@@ -1332,6 +1386,54 @@ const Lazarus = (function () {
         return self.io.toucheEnfoncee ? !!self.io.toucheEnfoncee(nom) : false;
       });
       B('arrete_jeu', async () => { self.jeuFini = true; return null; });
+
+      // --- nouveautés v7.0 : le MODE INTERFACE ---
+      const widget = (cmd) => { if (self.io.onWidget) self.io.onWidget(cmd); };
+      const nouvelId = (prefixe) => { self.compteurWidget++; return prefixe + '_' + self.compteurWidget; };
+      B('titre', async (args, line) => {
+        self.need(args, 1, 'titre', line);
+        self.aInterface = true;
+        widget({ type: 'titre', texte: toText(args[0]) });
+        return null;
+      });
+      B('etiquette', async (args) => {
+        self.aInterface = true;
+        const id = nouvelId('etq');
+        widget({ type: 'etiquette', id, texte: args.length ? toText(args[0]) : '' });
+        return id;
+      });
+      B('bouton', async (args, line) => {
+        self.need(args, 2, 'bouton', line);
+        if (!(args[1] instanceof LazFunction)) {
+          throw new LazError('bouton() attend un texte puis une fonction : bouton("OK", mon_action) — sans parenthèses après le nom de la fonction', line);
+        }
+        self.aInterface = true;
+        const id = nouvelId('btn');
+        self.actionsBoutons.set(id, args[1]);
+        widget({ type: 'bouton', id, texte: toText(args[0]) });
+        return id;
+      });
+      B('champ', async (args) => {
+        self.aInterface = true;
+        const id = nouvelId('chp');
+        widget({ type: 'champ', id, placeholder: args.length ? toText(args[0]) : '' });
+        return id;
+      });
+      B('valeur_de', async (args, line) => {
+        self.need(args, 1, 'valeur_de', line);
+        const v = self.io.getChampValeur ? self.io.getChampValeur(toText(args[0])) : '';
+        return v === null || v === undefined ? '' : String(v);
+      });
+      B('change_texte', async (args, line) => {
+        self.need(args, 2, 'change_texte', line);
+        widget({ type: 'maj', id: toText(args[0]), texte: toText(args[1]) });
+        return null;
+      });
+      B('efface_interface', async () => {
+        self.actionsBoutons.clear();
+        widget({ type: 'efface' });
+        return null;
+      });
       B('joue_son', async (args, line) => {
         self.need(args, 1, 'joue_son', line);
         const nom = toText(args[0]).toLowerCase();
@@ -1753,13 +1855,20 @@ const Lazarus = (function () {
     });
     try {
       await interp.run(source);
-      // v6 : si chaque_image() a été appelé, la boucle de jeu démarre (~30 images/s)
-      if (interp.frameFn) {
-        if (interp.io.onJeuDemarre) interp.io.onJeuDemarre();
+      // v6/v7 : si chaque_image() a été appelé OU si une interface existe,
+      // le programme reste vivant : boucle d'images + clics de boutons
+      if (interp.frameFn || interp.aInterface) {
+        if (interp.io.onJeuDemarre) interp.io.onJeuDemarre(interp.frameFn ? 'jeu' : 'interface');
         while (!interp.jeuFini) {
           if (interp.io.shouldStop && interp.io.shouldStop()) throw new StopEx();
-          interp.steps = 0; // chaque image repart de zéro (le jeu peut durer des heures)
-          await interp.callFunction(interp.frameFn, []);
+          interp.steps = 0; // chaque tour repart de zéro (l'appli peut durer des heures)
+          // v7 : les clics de boutons en attente
+          const clics = interp.io.prendClics ? interp.io.prendClics() : [];
+          for (const id of clics) {
+            const action = interp.actionsBoutons.get(id);
+            if (action) await interp.callFunction(action, []);
+          }
+          if (interp.frameFn) await interp.callFunction(interp.frameFn, []);
           if (interp.io.onFrame) await interp.io.onFrame();
           else await new Promise(r => setTimeout(r, 33));
         }
@@ -1786,7 +1895,7 @@ const Lazarus = (function () {
     }
   }
 
-  return { run, toText, LazError, version: '6.0' };
+  return { run, toText, LazError, version: '7.0' };
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = Lazarus;
@@ -2154,6 +2263,45 @@ fonk image() {
 chaque_image(image)
 vox("C'est parti ! Clique sur la page puis joue aux fleches (ou ZQSD).")
 `;
+  EX.v7app = `# ===== v7.0 : MODE INTERFACE — ta premiere APPLI ! =====
+# Des boutons, des champs... une vraie application en LAZARUS.
+# Elle apparait au-dessus de la console, et elle reste vivante.
+
+titre("Ma premiere appli LAZARUS")
+
+# --- le compteur ---
+garde total_clics = 0
+laz affichage = etiquette("Total de clics (a vie !) : {total_clics}")
+fonk plus_un() {
+    total_clics += 1
+    change_texte(affichage, "Total de clics (a vie !) : {total_clics}")
+    joue_son("clic")
+}
+bouton("+1", plus_un)
+
+# --- la salutation ---
+laz zone_nom = champ("Ecris ton prenom ici...")
+laz message = etiquette("")
+fonk saluer() {
+    laz n = valeur_de(zone_nom)
+    kan n == "" {
+        change_texte(message, "Ecris d'abord ton prenom !")
+    } sinon {
+        change_texte(message, "Bonjour " + majus(n) + " ! Bienvenue dans ton appli.")
+        joue_son("piece")
+    }
+}
+bouton("Dis bonjour", saluer)
+
+# --- quitter ---
+fonk quitter() {
+    vox("Merci d'avoir utilise l'appli !")
+    arrete_jeu()
+}
+bouton("Quitter l'appli", quitter)
+
+vox("Appli lancee ! Clique sur les boutons au-dessus.")
+`;
   EX.etoiles = `# ===== Pyramide d'étoiles =====
 laz hauteur = 7
 
@@ -2378,6 +2526,55 @@ vox("LAZARUS !")
   document.addEventListener('keyup', (e) => { touches.delete(nomTouche(e)); });
   window.addEventListener('blur', () => touches.clear());
 
+  // ---------- v7 : le mode interface (widgets) ----------
+  const appWrap = document.getElementById('appWrap');
+  let clicsEnAttente = [];
+  const champsParId = {};
+
+  function onWidget(cmd) {
+    if (cmd.type === 'efface') {
+      appWrap.innerHTML = '';
+      for (const k in champsParId) delete champsParId[k];
+      appWrap.style.display = 'none';
+      return;
+    }
+    if (cmd.type === 'maj') {
+      const el = document.getElementById('laz_' + cmd.id);
+      if (el) {
+        if (el.tagName === 'INPUT') el.value = cmd.texte;
+        else el.textContent = cmd.texte;
+      }
+      return;
+    }
+    appWrap.style.display = 'block';
+    if (cmd.type === 'titre') {
+      const el = document.createElement('div');
+      el.className = 'app-titre';
+      el.textContent = cmd.texte;
+      appWrap.appendChild(el);
+    } else if (cmd.type === 'etiquette') {
+      const el = document.createElement('div');
+      el.className = 'app-etiquette';
+      el.id = 'laz_' + cmd.id;
+      el.textContent = cmd.texte;
+      appWrap.appendChild(el);
+    } else if (cmd.type === 'bouton') {
+      const el = document.createElement('button');
+      el.className = 'app-bouton';
+      el.id = 'laz_' + cmd.id;
+      el.textContent = cmd.texte;
+      el.addEventListener('click', () => { clicsEnAttente.push(cmd.id); });
+      appWrap.appendChild(el);
+    } else if (cmd.type === 'champ') {
+      const el = document.createElement('input');
+      el.className = 'app-champ';
+      el.id = 'laz_' + cmd.id;
+      el.placeholder = cmd.placeholder || '';
+      champsParId[cmd.id] = el;
+      appWrap.appendChild(el);
+    }
+  }
+
   let audioCtx = null;
   function joueSon(nom) {
     try {
@@ -2424,6 +2621,8 @@ vox("LAZARUS !")
     running = true;
     stopFlag = false;
     touches.clear();
+    onWidget({ type: 'efface' });
+    clicsEnAttente = [];
     btnRun.style.display = 'none';
     btnStop.style.display = 'inline-block';
     addLine('▶ Exécution...', 'sys');
@@ -2443,7 +2642,13 @@ vox("LAZARUS !")
       toucheEnfoncee: (nom) => touches.has(nom),
       onFrame: () => new Promise(r => setTimeout(r, 33)),
       onSon: joueSon,
-      onJeuDemarre: () => addLine('🎮 Partie lancée ! Clique une fois sur la page, puis joue au clavier. (⏹ Arrêter pour quitter)', 'sys'),
+      onJeuDemarre: (mode) => addLine(mode === 'interface'
+        ? '🖥 Application lancée ! Elle est vivante au-dessus de la console. (⏹ Arrêter pour quitter)'
+        : '🎮 Partie lancée ! Clique une fois sur la page, puis joue au clavier. (⏹ Arrêter pour quitter)', 'sys'),
+      // v7 : le mode interface
+      onWidget: onWidget,
+      prendClics: () => { const c = clicsEnAttente; clicsEnAttente = []; return c; },
+      getChampValeur: (id) => (champsParId[id] ? champsParId[id].value : ''),
     };
 
     const result = await Lazarus.run(editor.value, io);
@@ -2476,9 +2681,10 @@ vox("LAZARUS !")
     consoleEl.innerHTML = '';
     canvasWrap.style.display = 'none';
     toileCtx = null;
+    onWidget({ type: 'efface' });
   });
 
-  addLine('Bienvenue dans LAZARUS v6.0 ! Charge l’exemple 🎮 « JEU TEMPS RÉEL » — oui, un vrai jeu au clavier !', 'sys');
+  addLine('Bienvenue dans LAZARUS v7.0 ! Nouveau : l’exemple 🖥️ « MODE INTERFACE » — crée ta première APPLI à boutons !', 'sys');
 })();
 </script>
 

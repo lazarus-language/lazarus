@@ -111,6 +111,7 @@ export default function LazarusPlayground({ codeInitial = 'vox("Bonjour le monde
   const [lignes, setLignes] = useState([]);
   const [enCours, setEnCours] = useState(false);
   const [saisie, setSaisie] = useState(null);   // { prompt } quand demand() attend
+  const [widgets, setWidgets] = useState([]);   // v7 : l'interface de l'appli
   const champRef = useRef(null);
   const canvasRef = useRef(null);
   const [canvasVisible, setCanvasVisible] = useState(false);
@@ -120,6 +121,8 @@ export default function LazarusPlayground({ codeInitial = 'vox("Bonjour le monde
   const touchesRef = useRef(new Set());
   const fsRef = useRef(new Map());
   const ctxRef = useRef(null);
+  const clicsRef = useRef([]);      // v7 : clics de boutons en attente
+  const champsAppRef = useRef({});  // v7 : éléments <input> des champs par id
 
   const ajoute = (texte, type = 'out') => setLignes((l) => [...l, { texte, type }]);
 
@@ -187,11 +190,30 @@ export default function LazarusPlayground({ codeInitial = 'vox("Bonjour le monde
     catch (e) { window.__lazMemoire = fusion; }
   };
 
+  // v7 : le mode interface
+  const onWidget = (cmd) => {
+    if (cmd.type === 'efface') {
+      setWidgets([]);
+      champsAppRef.current = {};
+      return;
+    }
+    if (cmd.type === 'maj') {
+      const input = champsAppRef.current[cmd.id];
+      if (input) { input.value = cmd.texte; return; }
+      setWidgets((ws) => ws.map((w) => (w.id === cmd.id ? { ...w, texte: cmd.texte } : w)));
+      return;
+    }
+    setWidgets((ws) => [...ws, cmd]);
+  };
+
   const executer = async () => {
     if (enCours) return;
     setEnCours(true);
     stopRef.current = false;
     touchesRef.current.clear();
+    setWidgets([]);
+    champsAppRef.current = {};
+    clicsRef.current = [];
     ajoute('▶ Exécution...', 'sys');
 
     const resultat = await Lazarus.run(code, {
@@ -211,7 +233,13 @@ export default function LazarusPlayground({ codeInitial = 'vox("Bonjour le monde
       toucheEnfoncee: (n) => touchesRef.current.has(n),
       onFrame: () => new Promise((r) => setTimeout(r, 33)),
       onSon: joueSon,
-      onJeuDemarre: () => ajoute('🎮 Partie lancée ! Clique sur la page, puis joue au clavier.', 'sys'),
+      onJeuDemarre: (mode) => ajoute(mode === 'interface'
+        ? '🖥 Application lancée ! Elle est vivante dans le panneau de droite.'
+        : '🎮 Partie lancée ! Clique sur la page, puis joue au clavier.', 'sys'),
+      // v7 : le mode interface
+      onWidget,
+      prendClics: () => { const c = clicsRef.current; clicsRef.current = []; return c; },
+      getChampValeur: (id) => (champsAppRef.current[id] ? champsAppRef.current[id].value : ''),
     });
 
     if (resultat.stopped) ajoute('⏹ Programme arrêté.', 'sys');
@@ -262,6 +290,17 @@ export default function LazarusPlayground({ codeInitial = 'vox("Bonjour le monde
           onKeyDown={(e) => { if (e.ctrlKey && e.key === 'Enter') executer(); }}
         />
         <div style={S.console} ref={consoleRef}>
+          {widgets.length > 0 && (
+            <div style={{ background: '#0f1420', border: '1px solid #2d3648', borderRadius: 10, padding: 12, marginBottom: 10 }}>
+              {widgets.map((w, i) => {
+                if (w.type === 'titre') return <div key={i} style={{ color: '#f0b429', fontWeight: 700, fontSize: '1.05rem', margin: '2px 0 8px', fontFamily: "'Segoe UI', sans-serif" }}>{w.texte}</div>;
+                if (w.type === 'etiquette') return <div key={i} style={{ color: '#e6edf3', margin: '5px 0', fontFamily: "'Segoe UI', sans-serif", whiteSpace: 'pre-wrap' }}>{w.texte}</div>;
+                if (w.type === 'bouton') return <button key={i} onClick={() => clicsRef.current.push(w.id)} style={{ background: 'linear-gradient(135deg,#b8860b,#f0b429)', color: '#1a1200', border: 'none', borderRadius: 8, padding: '7px 16px', fontWeight: 700, cursor: 'pointer', margin: '5px 8px 5px 0' }}>{w.texte}</button>;
+                if (w.type === 'champ') return <input key={i} ref={(el) => { if (el) champsAppRef.current[w.id] = el; }} placeholder={w.placeholder || ''} style={{ display: 'block', background: '#1c2330', border: '1px solid #2d3648', borderRadius: 8, color: '#e6edf3', padding: '7px 11px', margin: '5px 0', outline: 'none', minWidth: 220, fontFamily: "'Segoe UI', sans-serif" }} />;
+                return null;
+              })}
+            </div>
+          )}
           <div style={{ textAlign: 'center', marginBottom: 8, display: canvasVisible ? 'block' : 'none' }}>
             <canvas ref={canvasRef} style={{ maxWidth: '100%', border: '1px solid #2d3648', borderRadius: 8 }} />
           </div>

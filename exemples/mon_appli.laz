@@ -1,0 +1,38 @@
+# ===== v7.0 : MODE INTERFACE — ta premiere APPLI ! =====
+# Des boutons, des champs... une vraie application en LAZARUS.
+# Elle apparait au-dessus de la console, et elle reste vivante.
+
+titre("Ma premiere appli LAZARUS")
+
+# --- le compteur ---
+garde total_clics = 0
+laz affichage = etiquette("Total de clics (a vie !) : {total_clics}")
+fonk plus_un() {
+    total_clics += 1
+    change_texte(affichage, "Total de clics (a vie !) : {total_clics}")
+    joue_son("clic")
+}
+bouton("+1", plus_un)
+
+# --- la salutation ---
+laz zone_nom = champ("Ecris ton prenom ici...")
+laz message = etiquette("")
+fonk saluer() {
+    laz n = valeur_de(zone_nom)
+    kan n == "" {
+        change_texte(message, "Ecris d'abord ton prenom !")
+    } sinon {
+        change_texte(message, "Bonjour " + majus(n) + " ! Bienvenue dans ton appli.")
+        joue_son("piece")
+    }
+}
+bouton("Dis bonjour", saluer)
+
+# --- quitter ---
+fonk quitter() {
+    vox("Merci d'avoir utilise l'appli !")
+    arrete_jeu()
+}
+bouton("Quitter l'appli", quitter)
+
+vox("Appli lancee ! Clique sur les boutons au-dessus.")

@@ -1016,6 +1016,79 @@ def make_builtins(env, interp=None):
                 pass
         return None
 
+    # --- nouveautés v7.0 : le MODE INTERFACE ! ---
+    # titre / etiquette / bouton / champ construisent une vraie application.
+    # Playground : widgets HTML au-dessus de la console.
+    # Python : widgets dans la fenêtre LAZARUS (tkinter).
+
+    def _interface_requise(line):
+        if interp is None:
+            raise LazError("le mode interface n'existe pas en version traduite : lance directement « lazarus fichier.laz »", line)
+
+    def _widget(cmd):
+        if interp.widget_live is not None:
+            interp.widget_live(cmd)
+        else:
+            interp.interface_cmds.append(cmd)
+
+    def _nouvel_id(prefixe):
+        interp.compteur_widget += 1
+        return f"{prefixe}_{interp.compteur_widget}"
+
+    def b_titre(args, line):
+        _need(args, 1, 'titre', line)
+        _interface_requise(line)
+        interp.a_interface = True
+        _widget({'type': 'titre', 'texte': to_text(args[0])})
+        return None
+
+    def b_etiquette(args, line):
+        _interface_requise(line)
+        interp.a_interface = True
+        wid = _nouvel_id('etq')
+        _widget({'type': 'etiquette', 'id': wid, 'texte': to_text(args[0]) if args else ''})
+        return wid
+
+    def b_bouton(args, line):
+        _need(args, 2, 'bouton', line)
+        _interface_requise(line)
+        if not isinstance(args[1], LazFunction):
+            raise LazError('bouton() attend un texte puis une fonction : bouton("OK", mon_action) — sans parenthèses après le nom de la fonction', line)
+        interp.a_interface = True
+        wid = _nouvel_id('btn')
+        interp.actions_boutons[wid] = args[1]
+        _widget({'type': 'bouton', 'id': wid, 'texte': to_text(args[0])})
+        return wid
+
+    def b_champ(args, line):
+        _interface_requise(line)
+        interp.a_interface = True
+        wid = _nouvel_id('chp')
+        _widget({'type': 'champ', 'id': wid, 'placeholder': to_text(args[0]) if args else ''})
+        return wid
+
+    def b_valeur_de(args, line):
+        _need(args, 1, 'valeur_de', line)
+        _interface_requise(line)
+        if interp.champ_valeur_fn is not None:
+            try:
+                return str(interp.champ_valeur_fn(to_text(args[0])))
+            except Exception:
+                return ''
+        return ''
+
+    def b_change_texte(args, line):
+        _need(args, 2, 'change_texte', line)
+        _interface_requise(line)
+        _widget({'type': 'maj', 'id': to_text(args[0]), 'texte': to_text(args[1])})
+        return None
+
+    def b_efface_interface(args, line):
+        _interface_requise(line)
+        interp.actions_boutons.clear()
+        _widget({'type': 'efface'})
+        return None
+
     # --- nouveautés v3.1 : le mode dessin ! ---
     # Les commandes s'accumulent, puis sauve_dessin() écrit une image SVG.
 
@@ -1191,8 +1264,16 @@ def make_builtins(env, interp=None):
         # --- nouveautés v6.0 : le mode jeu (temps réel) ---
         'chaque_image': b_chaque_image,     # la boucle de jeu (~30 images/s)
         'touche_pressee': b_touche_pressee, # cette touche est-elle enfoncée LA maintenant ?
-        'arrete_jeu': b_arrete_jeu,         # terminer la boucle de jeu
+        'arrete_jeu': b_arrete_jeu,         # terminer la boucle de jeu (ou l'appli)
         'joue_son': b_joue_son,             # jouer un petit son (piece, saut, explosion...)
+        # --- nouveautés v7.0 : le mode interface ---
+        'titre': b_titre,                   # grand titre de l'application
+        'etiquette': b_etiquette,           # texte affiché (renvoie son id)
+        'bouton': b_bouton,                 # bouton cliquable relié à une fonction
+        'champ': b_champ,                   # zone de saisie (renvoie son id)
+        'valeur_de': b_valeur_de,           # lire le contenu d'un champ
+        'change_texte': b_change_texte,     # modifier une étiquette / un bouton / un champ
+        'efface_interface': b_efface_interface,  # tout effacer
     }
     for name, fn in builtins.items():
         env.declare(name, ('builtin', name, fn))
@@ -1217,6 +1298,12 @@ class Interpreter:
         self.jeu_fini = False      # v6 : arrete_jeu() a été appelé
         self.jeu_touches = None    # v6 : touches enfoncées (rempli par la fenêtre de jeu)
         self.jeu_son = None        # v6 : rempli par la fenêtre de jeu
+        self.a_interface = False   # v7 : des widgets ont été créés
+        self.interface_cmds = []   # v7 : widgets créés avant l'ouverture de la fenêtre
+        self.actions_boutons = {}  # v7 : id de bouton -> fonction LAZARUS
+        self.compteur_widget = 0   # v7 : générateur d'identifiants
+        self.widget_live = None    # v7 : rempli par la fenêtre (création/màj en direct)
+        self.champ_valeur_fn = None  # v7 : rempli par la fenêtre (lecture des champs)
         make_builtins(self.globals, self)
 
     def note_histoire(self, line, name, value):
@@ -2146,10 +2233,104 @@ def lance_jeu(interp):
     haut = int(t0['h']) if t0 else 360
 
     root = tk.Tk()
-    root.title('LAZARUS — mode jeu (Échap ou fermer pour quitter)')
+    if interp.a_interface and interp.frame_fn is None:
+        root.title('LAZARUS — ton application (fermer pour quitter)')
+    else:
+        root.title('LAZARUS — mode jeu (Échap ou fermer pour quitter)')
     root.resizable(False, False)
-    canvas = tk.Canvas(root, width=larg, height=haut, bg='#0d1117', highlightthickness=0)
-    canvas.pack()
+    root.configure(bg='#0d1117')
+
+    erreurs = []
+
+    # ----- v7 : la zone des widgets (interface) -----
+    widgets_par_id = {}
+    cadre = None
+    if interp.a_interface:
+        cadre = tk.Frame(root, bg='#0d1117', padx=16, pady=12)
+        cadre.pack(fill='x')
+
+    def sur_clic(fn):
+        try:
+            interp.call_function(fn, [])
+            if interp.etat_dessin.get('toile'):
+                dessine()
+        except LazError as e:
+            erreurs.append(e)
+            interp.jeu_fini = True
+        if interp.jeu_fini:
+            try:
+                root.destroy()
+            except Exception:
+                pass
+
+    def construit_widget(cmd):
+        genre = cmd['type']
+        if genre == 'efface':
+            for w in list(widgets_par_id.values()):
+                try:
+                    w.destroy()
+                except Exception:
+                    pass
+            widgets_par_id.clear()
+            if cadre is not None:
+                for w in cadre.winfo_children():
+                    try:
+                        w.destroy()
+                    except Exception:
+                        pass
+            return
+        if genre == 'maj':
+            w = widgets_par_id.get(cmd['id'])
+            if w is None:
+                return
+            try:
+                if isinstance(w, tk.Entry):
+                    w.delete(0, 'end')
+                    w.insert(0, cmd['texte'])
+                else:
+                    w.config(text=cmd['texte'])
+            except Exception:
+                pass
+            return
+        if cadre is None:
+            return
+        if genre == 'titre':
+            w = tk.Label(cadre, text=cmd['texte'], bg='#0d1117', fg='#f0b429',
+                         font=('Segoe UI', 14, 'bold'), anchor='w')
+            w.pack(fill='x', pady=(2, 8))
+        elif genre == 'etiquette':
+            w = tk.Label(cadre, text=cmd['texte'], bg='#0d1117', fg='#e6edf3',
+                         font=('Segoe UI', 11), anchor='w', justify='left')
+            w.pack(fill='x', pady=3)
+            widgets_par_id[cmd['id']] = w
+        elif genre == 'bouton':
+            fn = interp.actions_boutons.get(cmd['id'])
+            w = tk.Button(cadre, text=cmd['texte'], bg='#f0b429', fg='#1a1200',
+                          activebackground='#ffd970', font=('Segoe UI', 10, 'bold'),
+                          relief='flat', padx=14, pady=5,
+                          command=(lambda f=fn: sur_clic(f)) if fn else None)
+            w.pack(anchor='w', pady=4)
+            widgets_par_id[cmd['id']] = w
+        elif genre == 'champ':
+            w = tk.Entry(cadre, bg='#1c2330', fg='#e6edf3', insertbackground='#e6edf3',
+                         font=('Segoe UI', 11), relief='flat')
+            w.pack(fill='x', ipady=5, pady=4)
+            widgets_par_id[cmd['id']] = w
+
+    if interp.a_interface:
+        for cmd in interp.interface_cmds:
+            construit_widget(cmd)
+        interp.interface_cmds = []
+        interp.widget_live = construit_widget
+        interp.champ_valeur_fn = lambda wid: (widgets_par_id[wid].get()
+                                              if wid in widgets_par_id and isinstance(widgets_par_id[wid], tk.Entry)
+                                              else '')
+
+    # ----- la toile (seulement si le programme dessine ou joue) -----
+    canvas = None
+    if interp.frame_fn is not None or t0 is not None:
+        canvas = tk.Canvas(root, width=larg, height=haut, bg='#0d1117', highlightthickness=0)
+        canvas.pack()
 
     interp.jeu_touches = set()
     interp.jeu_son = joue_son
@@ -2163,13 +2344,17 @@ def lance_jeu(interp):
     root.protocol('WM_DELETE_WINDOW', lambda: setattr(interp, 'jeu_fini', True))
 
     POLICE = ('Consolas', 12)
-    erreurs = []
     etat = {'larg': larg, 'haut': haut}
 
     def dessine():
+        nonlocal canvas
         t = interp.etat_dessin.get('toile')
         if not t:
             return
+        if canvas is None:
+            canvas = tk.Canvas(root, width=int(t['w']), height=int(t['h']),
+                               bg='#0d1117', highlightthickness=0)
+            canvas.pack()
         w, h = int(t['w']), int(t['h'])
         if w != etat['larg'] or h != etat['haut']:
             etat['larg'], etat['haut'] = w, h
@@ -2197,23 +2382,28 @@ def lance_jeu(interp):
                 canvas.create_text(f[1], f[2], text=f[3], fill=f[4], anchor='sw', font=POLICE)
 
     def image_suivante():
-        if interp.jeu_fini or 'echap' in interp.jeu_touches:
+        quitte_echap = interp.frame_fn is not None and 'echap' in interp.jeu_touches
+        if interp.jeu_fini or quitte_echap:
             try:
                 root.destroy()
             except Exception:
                 pass
             return
-        try:
-            interp.call_function(interp.frame_fn, [])
-            dessine()
-        except LazError as e:
-            erreurs.append(e)
+        if interp.frame_fn is not None:
             try:
-                root.destroy()
-            except Exception:
-                pass
-            return
-        root.after(33, image_suivante)
+                interp.call_function(interp.frame_fn, [])
+                dessine()
+            except LazError as e:
+                erreurs.append(e)
+                try:
+                    root.destroy()
+                except Exception:
+                    pass
+                return
+            root.after(33, image_suivante)
+        else:
+            # mode interface pur : on veille juste sur arrete_jeu()
+            root.after(60, image_suivante)
 
     root.after(33, image_suivante)
     try:
@@ -2222,6 +2412,8 @@ def lance_jeu(interp):
         pass
     interp.jeu_touches = None
     interp.jeu_son = None
+    interp.widget_live = None
+    interp.champ_valeur_fn = None
     if erreurs:
         raise erreurs[0]
 
@@ -2240,8 +2432,8 @@ def run_file(path):
     interp.charge_memoire()
     try:
         interp.run(source)
-        # v6 : si chaque_image() a été appelé, la partie commence !
-        if interp.frame_fn is not None:
+        # v6/v7 : jeu temps réel ou application à boutons — la fenêtre s'ouvre !
+        if interp.frame_fn is not None or interp.a_interface:
             lance_jeu(interp)
     except LazError as e:
         print(e)

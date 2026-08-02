@@ -618,6 +618,42 @@ Les règles d'or : redessine TOUTE la scène à chaque image (`toile` + `fond`
 + formes) ; pas de `demand()` ni de `ralenti()` dans la fonction d'image ;
 et `garde` fonctionne — ton record peut survivre entre les parties !
 
+## 27. Le mode INTERFACE — de vraies applications ! 🖥️ *(v7)*
+
+Après les jeux, les **applications** : boutons cliquables, champs de saisie,
+textes qui se mettent à jour. Dans le playground, ton appli apparaît au-dessus
+de la console ; sur ton ordinateur, elle vit dans la fenêtre LAZARUS.
+
+```lazarus
+titre("Ma calculatrice de pourboire")
+laz zone = champ("Le montant du repas...")
+laz resultat = etiquette("")
+fonk calcule() {
+    laz montant = nombre(valeur_de(zone))
+    laz pourboire = arondi(montant * 0.1, 2)
+    change_texte(resultat, "Pourboire conseille : {pourboire}")
+}
+bouton("Calculer", calcule)
+```
+
+Les 7 fonctions du mode interface :
+
+- `titre(texte)` — le grand titre de l'application.
+- `etiquette(texte)` — un texte affiché ; **renvoie un identifiant** à garder
+  dans une variable pour le modifier plus tard.
+- `bouton(texte, ma_fonction)` — un bouton qui appelle ta fonction à chaque
+  clic (le nom de la fonction SANS parenthèses).
+- `champ(indication)` — une zone de saisie ; renvoie son identifiant.
+- `valeur_de(id)` — lit le texte tapé dans un champ (pense à `nombre()` pour
+  les calculs).
+- `change_texte(id, texte)` — met à jour une étiquette, un bouton ou un champ.
+- `efface_interface()` — repart de zéro.
+
+L'application reste vivante après la fin du programme : elle attend les clics.
+`arrete_jeu()` la ferme. Et tout se combine : `garde` pour des données qui
+survivent, `joue_son()` pour des clics sonores, et même la toile de dessin ou
+`chaque_image` pour une appli qui dessine !
+
 ---
 
-*LAZARUS v6.0 — créé par Ladji. Maintenant, on crée des JEUX.*
+*LAZARUS v7.0 — créé par Ladji. Des jeux, des applis : un vrai langage.*

@@ -1,6 +1,6 @@
 # LAZARUS
 
-**Le langage de programmation créé par Ladji** — la structure de Java, la simplicité de Python, et des mots-clés uniques au monde. **Version 6.0 : LE MODE JEU** — créez de vrais jeux temps réel (30 images/s, clavier en direct, sons) dans le playground ET dans une vraie fenêtre sur votre ordinateur. Plus : mots-clés multilingues, variables persistantes `garde`, ralenti pédagogique, traducteur vers Python (×50), mode dessin, couleurs, classes.
+**Le langage de programmation créé par Ladji** — la structure de Java, la simplicité de Python, et des mots-clés uniques au monde. **Version 7.0 : LE MODE INTERFACE** — créez de vraies applications (boutons, champs de saisie, textes vivants) en LAZARUS, dans le playground ET dans une fenêtre sur votre ordinateur. Plus : mode JEU temps réel (30 images/s, clavier, sons), mots-clés multilingues, variables persistantes `garde`, ralenti pédagogique, traducteur vers Python (×50), mode dessin, couleurs, classes.
 
 *A programming language created by Ladji — Java's structure, Python's simplicity, and one-of-a-kind keywords. French-friendly error messages. See the [English section](#-english) below.*
 
@@ -80,6 +80,8 @@ n'importe quelle page. Voir le dossier [`react/`](react/).
 | `ralenti(0.5)` *(v5)* | exécution pas à pas visible (playground) |
 | `chaque_image(f)` + `touche_pressee("droite")` *(v6)* | JEUX temps réel, 30 images/s |
 | `joue_son("piece")` + `arrete_jeu()` *(v6)* | sons et fin de partie |
+| `titre` + `bouton("OK", action)` + `champ` *(v7)* | de vraies APPLICATIONS à boutons |
+| `valeur_de(id)` + `change_texte(id, txt)` *(v7)* | lire et mettre à jour l'interface |
 
 - Accolades `{ }` pour les blocs, **pas** de point-virgules
 - Listes : `[1, 2, 3]`, intervalle : `1..10`, dictionnaires : `{ "a": 1 }`
