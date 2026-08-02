@@ -34,6 +34,24 @@ Ou sans pip, avec juste Python 3 :
 python3 lazarus.py exemples/demo.laz
 ```
 
+
+## 📦 LAZARUS pour les développeurs JavaScript / React (v6)
+
+Le moteur complet est aussi sur **npm** :
+
+```bash
+npm install lazarus-lang
+```
+
+```js
+const Lazarus = require('lazarus-lang');
+await Lazarus.run('vox("Bonjour !")', { onPrint: console.log, onInput: async () => '' });
+```
+
+Et pour React / Next.js : le composant officiel **[`<LazarusPlayground />`](react/)** —
+un éditeur LAZARUS complet (console, dessin, mode jeu temps réel) à poser dans
+n'importe quelle page. Voir le dossier [`react/`](react/).
+
 ## 📖 Le langage en 30 secondes
 
 | LAZARUS | Signification |
