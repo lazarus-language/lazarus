@@ -75,7 +75,7 @@ n'importe quelle page. Voir le dossier [`react/`](react/).
 | `vox("Salut {nom}")` *(v4)* | interpolation |
 | `essaie { } rattrape err { }` *(v4)* | gestion d'erreurs |
 | `lazarus --traduire prog.laz` *(v4)* | traduction en Python, ×50 plus rapide |
-| `#langue: anglais` + `lazarus --traduire-vers` *(v5)* | mots-clés multilingues |
+| `#langue: anglais` / `#langue: francais` + `lazarus --traduire-vers` *(v5/v7.1)* | mots-clés multilingues |
 | `garde score = 0` *(v5)* | variable qui se souvient entre les exécutions |
 | `ralenti(0.5)` *(v5)* | exécution pas à pas visible (playground) |
 | `chaque_image(f)` + `touche_pressee("droite")` *(v6)* | JEUX temps réel, 30 images/s |

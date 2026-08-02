@@ -1,0 +1,44 @@
+#langue: francais
+# ===== LAZARUS en français académique (v7.1) =====
+# Né d'une discussion avec la communauté r/programmation.
+
+soit prenom = "Awa"
+soit notes = [12, 15, 18]
+
+fonction moyenne(liste) {
+    soit total = 0
+    pour n dans liste {
+        total += n
+    }
+    retourne total / taille(liste)
+}
+
+si taille(notes) > 0 {
+    vox("Moyenne de {prenom} :", arondi(moyenne(notes), 1))
+} sinon {
+    vox("Aucune note.")
+}
+
+soit compte = 3
+tantque compte > 0 {
+    vox("Compte a rebours :", compte)
+    compte -= 1
+}
+
+classe Personne {
+    fonction init(moi, nom) {
+        moi.nom = nom
+    }
+    fonction salue(moi) {
+        vox_couleur("Bonjour, je suis " + moi.nom, "vert")
+    }
+}
+soit p = Personne(prenom)
+p.salue()
+
+essaie {
+    soit x = nombre("pas un nombre")
+} rattrape probleme {
+    vox_couleur("Erreur maitrisee : {probleme}", "jaune")
+}
+vox("Le francais academique, ca marche !")

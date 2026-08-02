@@ -100,6 +100,16 @@ LANGUES = {
         'klas': 'class', 'herite': 'extends', 'importe': 'load',
         'essaie': 'try', 'rattrape': 'catch', 'garde': 'keep',
     },
+    # v7.1 : le pack "français académique" — orthographe correcte,
+    # né d'une discussion avec la communauté (merci r/programmation !)
+    'francais': {
+        'laz': 'soit', 'fonk': 'fonction', 'rend': 'retourne', 'kan': 'si',
+        'sinon': 'sinon', 'tanke': 'tantque', 'pou': 'pour', 'dan': 'dans',
+        'vrai': 'vrai', 'faux': 'faux', 'walu': 'rien', 'et': 'et',
+        'ou': 'ou', 'non': 'non', 'kase': 'casse', 'swiv': 'continue',
+        'klas': 'classe', 'herite': 'herite', 'importe': 'importe',
+        'essaie': 'essaie', 'rattrape': 'rattrape', 'garde': 'garde',
+    },
     # BROUILLON — à faire valider par des locuteurs natifs du bambara
     'bambara': {
         'laz': 'bila', 'fonk': 'baara', 'rend': 'segin', 'kan': 'ni',
@@ -129,7 +139,7 @@ def detecte_langue(source):
         m = LANGUE_RE.search(ligne)
         if m:
             nom = m.group(1).lower()
-            if nom in ('lazarus', 'classique', 'francais', 'français'):
+            if nom in ('lazarus', 'classique'):
                 return None, None
             if nom not in LANGUES:
                 dispo = ', '.join(['lazarus'] + sorted(LANGUES))
@@ -2084,8 +2094,8 @@ class Traducteur:
 def convertir_langue(source, cible):
     """v5.0 : convertit un fichier LAZARUS d'une langue de mots-clés à une autre."""
     cible = cible.lower()
-    if cible in ('francais', 'français', 'classique'):
-        cible = 'lazarus'
+    if cible in ('français', 'classique'):
+        cible = 'francais' if cible == 'français' else 'lazarus'
     if cible != 'lazarus' and cible not in LANGUES:
         dispo = ', '.join(['lazarus'] + sorted(LANGUES))
         raise LazError(f"langue inconnue « {cible} » (disponibles : {dispo})")

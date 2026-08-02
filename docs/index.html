@@ -298,7 +298,7 @@
 <header>
   <div class="logo">LAZARUS</div>
   <div class="tagline">Le langage de programmation créé par <b>Ladji</b> — accolades comme Java, simplicité de Python, mots-clés uniques.</div>
-  <div class="version">v7.0</div>
+  <div class="version">v7.1</div>
 </header>
 
 <div class="toolbar">
@@ -320,6 +320,7 @@
     <option value="anglais">v5.0 : coder en anglais (#langue:)</option>
     <option value="jeu6">🎮 v6.0 : JEU TEMPS RÉEL — Attrape les pièces !</option>
     <option value="v7app">🖥️ v7.0 : MODE INTERFACE — Ta première appli !</option>
+    <option value="francais">🇫🇷 v7.1 : le pack français académique (#langue:)</option>
   </select>
   <button id="btnClear">🗑 Effacer la console</button>
   <span class="hint">Astuce : Ctrl + Entrée pour exécuter</span>
@@ -427,7 +428,7 @@ cercle_plein trace_texte sauve_dessin
 v4.0 : "Salut {nom}" · echoue
 essaie { } rattrape err { }
 v5.0 : garde x = 0 (se souvient !)
-ralenti(0.5) · #langue: anglais
+ralenti(0.5) · #langue: anglais/francais
 v6.0 : chaque_image(ma_fonk)
 touche_pressee("droite") arrete_jeu()
 joue_son("piece") · 30 images/s
@@ -440,7 +441,7 @@ efface_interface() → des APPLIS !
 </details>
 
 <footer>
-  <b>LAZARUS v7.0</b> — créé par Ladji · Un langage libre et gratuit, pour tout le monde · <a href="https://github.com/lazarus-language/lazarus" style="color:#f0b429">GitHub</a> · pip install lazarus-lang
+  <b>LAZARUS v7.1</b> — créé par Ladji · Un langage libre et gratuit, pour tout le monde · <a href="https://github.com/lazarus-language/lazarus" style="color:#f0b429">GitHub</a> · pip install lazarus-lang
 </footer>
 
 <script>
@@ -485,6 +486,14 @@ const Lazarus = (function () {
       swiv: 'next', klas: 'class', herite: 'extends', importe: 'load',
       essaie: 'try', rattrape: 'catch', garde: 'keep',
     },
+    // v7.1 : le pack "français académique" — orthographe correcte
+    francais: {
+      laz: 'soit', fonk: 'fonction', rend: 'retourne', kan: 'si', sinon: 'sinon',
+      tanke: 'tantque', pou: 'pour', dan: 'dans', vrai: 'vrai', faux: 'faux',
+      walu: 'rien', et: 'et', ou: 'ou', non: 'non', kase: 'casse',
+      swiv: 'continue', klas: 'classe', herite: 'herite', importe: 'importe',
+      essaie: 'essaie', rattrape: 'rattrape', garde: 'garde',
+    },
     bambara: { // BROUILLON à faire valider par des locuteurs natifs
       laz: 'bila', fonk: 'baara', rend: 'segin', kan: 'ni', sinon: 'note',
       tanke: 'foo', pou: 'ye', dan: 'la', vrai: 'tien', faux: 'galon',
@@ -508,7 +517,7 @@ const Lazarus = (function () {
       const m = l.match(LANGUE_RE);
       if (m) {
         const nom = m[1].toLowerCase();
-        if (['lazarus', 'classique', 'francais', 'français'].includes(nom)) return null;
+        if (['lazarus', 'classique'].includes(nom)) return null;
         if (!(nom in LANGUES)) {
           throw new LazError(`langue inconnue « ${nom} » (disponibles : lazarus, ${Object.keys(LANGUES).sort().join(', ')})`, 1);
         }
@@ -2301,6 +2310,36 @@ fonk quitter() {
 bouton("Quitter l'appli", quitter)
 
 vox("Appli lancee ! Clique sur les boutons au-dessus.")
+`;
+  EX.francais = `#langue: francais
+# ===== v7.1 : le pack "français académique" =====
+# Né d'une discussion avec la communauté : mots-clés en
+# français correct. Le même moteur LAZARUS, ton style à toi.
+
+soit prenom = "Awa"
+soit notes = [12, 15, 18]
+
+fonction moyenne(liste) {
+    soit total = 0
+    pour n dans liste {
+        total += n
+    }
+    retourne total / taille(liste)
+}
+
+si taille(notes) > 0 {
+    vox("Moyenne de {prenom} :", arondi(moyenne(notes), 1))
+}
+
+soit compte = 3
+tantque compte > 0 {
+    vox("Compte a rebours :", compte)
+    compte -= 1
+}
+
+garde visites_fr = 0
+visites_fr += 1
+vox_couleur("Tu as lance cet exemple {visites_fr} fois.", "vert")
 `;
   EX.etoiles = `# ===== Pyramide d'étoiles =====
 laz hauteur = 7

@@ -119,7 +119,7 @@ Mode INTERFACE (v7 ; playground : widgets au-dessus de la console ; Python : fen
 
 ## 7. Packs de langue (v5)
 
-Un commentaire en tête de fichier change les mots-clés : `#langue: anglais` (let, func, give, when, else, while, for, in, true, false, null, and, or, not, stop, next, class, extends, load, try, catch, keep). Brouillons `bambara` et `wolof` existent. Les fonctions intégrées (`vox`, etc.) restent identiques dans toutes les langues. Conversion de fichier : `lazarus --traduire-vers anglais f.laz`.
+Un commentaire en tête de fichier change les mots-clés : `#langue: anglais` (let, func, give, when, else, while, for, in, true, false, null, and, or, not, stop, next, class, extends, load, try, catch, keep) · `#langue: francais` — français académique (soit, fonction, retourne, si, sinon, tantque, pour, dans, vrai, faux, rien, et, ou, non, casse, continue, classe, herite, importe, essaie, rattrape, garde). Brouillons `bambara` et `wolof` existent. Les fonctions intégrées (`vox`, etc.) restent identiques dans toutes les langues. Conversion de fichier : `lazarus --traduire-vers anglais f.laz`.
 
 ## 8. Ligne de commande
 
