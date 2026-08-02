@@ -669,6 +669,27 @@ prêt à exécuter. Un jeu codé à Bamako se joue à Paris dix secondes plus ta
 l'écran d'accueil » : LAZARUS devient une appli avec son icône — et le
 playground fonctionne ensuite MÊME SANS INTERNET.
 
+## 29. L'École — et LAZARUS t'écoute 🎓🎤 *(v9)*
+
+**L'École.** Le bouton 🎓 du playground ouvre un cours complet intégré :
+12 leçons progressives, du premier `vox` jusqu'au dessin, avec vérification
+automatique de TON code, indices, et une série de jours 🔥 à entretenir
+comme sur Duolingo. Pas besoin de prof, pas besoin d'internet une fois
+l'appli installée : l'école est DANS le langage.
+
+**L'écoute.** `ecoute("Ta réponse ?")` — ton programme écoute le micro et
+te rend le texte reconnu (en français). Combine avec `dis()` :
+
+```lazarus
+dis("Comment tu t'appelles ?")
+laz nom = ecoute("Dis ton prénom...")
+dis("Enchanté " + nom + " !")
+```
+
+Un programme avec lequel on PARLE — sans clavier. Sur ordinateur, `ecoute()`
+bascule sur le clavier (le micro arrive) ; dans le playground, c'est la vraie
+reconnaissance vocale du navigateur.
+
 ---
 
-*LAZARUS v8.0 — créé par Ladji. Dans ta poche, et il parle.*
+*LAZARUS v9.0 — créé par Ladji. L'école dans la poche, et il écoute.*

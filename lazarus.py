@@ -1052,6 +1052,16 @@ def make_builtins(env, interp=None):
             pass
         return None
 
+    # --- nouveauté v9.0 : LAZARUS ECOUTE (reconnaissance vocale) ---
+    def b_ecoute(args, line):
+        prompt = to_text(args[0]) if args else ''
+        # Sur ordinateur : pas encore de micro — on bascule sur le clavier.
+        try:
+            reponse = input('🎤 ' + prompt + " (l'écoute vocale marche dans le playground — ici, tape ta réponse) ")
+        except EOFError:
+            reponse = ''
+        return reponse
+
     # --- nouveautés v7.0 : le MODE INTERFACE ! ---
     # titre / etiquette / bouton / champ construisent une vraie application.
     # Playground : widgets HTML au-dessus de la console.
@@ -1303,6 +1313,7 @@ def make_builtins(env, interp=None):
         'arrete_jeu': b_arrete_jeu,         # terminer la boucle de jeu (ou l'appli)
         'joue_son': b_joue_son,             # jouer un petit son (piece, saut, explosion...)
         'dis': b_dis,                       # v8 : LAZARUS parle à voix haute !
+        'ecoute': b_ecoute,                 # v9 : LAZARUS écoute ta voix (playground)
         # --- nouveautés v7.0 : le mode interface ---
         'titre': b_titre,                   # grand titre de l'application
         'etiquette': b_etiquette,           # texte affiché (renvoie son id)

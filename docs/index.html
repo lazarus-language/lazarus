@@ -245,6 +245,29 @@
     min-width: 160px;
   }
 
+  /* ---------- v9 : l'École ---------- */
+  #ecolePanel {
+    display: none;
+    background: linear-gradient(135deg, #14102a, #1a1430);
+    border-bottom: 2px solid var(--gold-dim);
+    padding: 14px 22px;
+  }
+  #ecolePanel .ec-haut { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  #ecolePanel .ec-titre { font-weight: 700; color: var(--gold); font-size: 1.05rem; }
+  #ecolePanel .ec-serie { color: #ff9d4d; font-weight: 700; margin-left: auto; }
+  #ecolePanel .ec-points { display: flex; gap: 5px; margin: 8px 0; flex-wrap: wrap; }
+  #ecolePanel .ec-point { width: 14px; height: 14px; border-radius: 50%; background: var(--bg3); border: 1px solid var(--border); cursor: pointer; }
+  #ecolePanel .ec-point.fait { background: var(--green); border-color: var(--green); }
+  #ecolePanel .ec-point.actuel { border: 2px solid var(--gold); }
+  #ecolePanel .ec-texte { color: var(--text); margin: 8px 0 12px; line-height: 1.6; max-width: 900px; white-space: pre-wrap; }
+  #ecolePanel .ec-texte code { background: #0a0e14; border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px; color: var(--gold); font-family: Consolas, monospace; }
+  #ecolePanel .ec-boutons { display: flex; gap: 10px; flex-wrap: wrap; }
+  #ecolePanel .ec-verifier { background: linear-gradient(135deg, #1a7f37, #2ea043); border: none; color: #fff; font-weight: 700; }
+  #ecolePanel .ec-suivant { background: linear-gradient(135deg, #b8860b, #f0b429); border: none; color: #1a1200; font-weight: 700; display: none; }
+  #ecolePanel .ec-msg { margin-top: 10px; font-weight: 600; display: none; }
+  #ecolePanel .ec-msg.gagne { color: var(--green); }
+  #ecolePanel .ec-msg.perdu { color: #facc15; }
+
   /* ---------- aide-mémoire ---------- */
   .cheatsheet {
     border-top: 1px solid var(--border);
@@ -305,7 +328,7 @@
 <header>
   <div class="logo">LAZARUS</div>
   <div class="tagline">Le langage de programmation créé par <b>Ladji</b> — accolades comme Java, simplicité de Python, mots-clés uniques.</div>
-  <div class="version">v8.0</div>
+  <div class="version">v9.0</div>
 </header>
 
 <div class="toolbar">
@@ -332,7 +355,24 @@
   </select>
   <button id="btnClear">🗑 Effacer la console</button>
   <button id="btnShare">🔗 Partager</button>
+  <button id="btnEcole" style="background:linear-gradient(135deg,#4c1d95,#7c3aed);border-color:#7c3aed;font-weight:700">🎓 L'École</button>
   <span class="hint">Astuce : Ctrl + Entrée pour exécuter</span>
+</div>
+
+<div id="ecolePanel">
+  <div class="ec-haut">
+    <span class="ec-titre" id="ecTitre"></span>
+    <span class="ec-serie" id="ecSerie"></span>
+  </div>
+  <div class="ec-points" id="ecPoints"></div>
+  <div class="ec-texte" id="ecTexte"></div>
+  <div class="ec-boutons">
+    <button class="ec-verifier" id="ecVerifier">✅ Vérifier ma réponse</button>
+    <button id="ecIndice">💡 Indice</button>
+    <button class="ec-suivant" id="ecSuivant">→ Leçon suivante</button>
+    <button id="ecQuitter">❌ Quitter l'école</button>
+  </div>
+  <div class="ec-msg" id="ecMsg"></div>
 </div>
 
 <main>
@@ -452,7 +492,7 @@ efface_interface() → des APPLIS !
 </details>
 
 <footer>
-  <b>LAZARUS v8.0</b> — créé par Ladji · Un langage libre et gratuit, pour tout le monde · <a href="https://github.com/lazarus-language/lazarus" style="color:#f0b429">GitHub</a> · pip install lazarus-lang
+  <b>LAZARUS v9.0</b> — créé par Ladji · Un langage libre et gratuit, pour tout le monde · <a href="https://github.com/lazarus-language/lazarus" style="color:#f0b429">GitHub</a> · pip install lazarus-lang
 </footer>
 
 <script>
@@ -1415,6 +1455,20 @@ const Lazarus = (function () {
         return null;
       });
 
+      // --- nouveauté v9.0 : LAZARUS ECOUTE ---
+      B('ecoute', async (args) => {
+        const prompt = args.length ? toText(args[0]) : '';
+        if (self.io.onEcoute) {
+          const r = await self.io.onEcoute(prompt);
+          return r === null || r === undefined ? '' : String(r);
+        }
+        if (self.io.onInput) {
+          const r = await self.io.onInput('🎤 ' + prompt + ' (micro indisponible — tape ta réponse) ');
+          return r === null || r === undefined ? '' : String(r);
+        }
+        return '';
+      });
+
       // --- nouveautés v7.0 : le MODE INTERFACE ---
       const widget = (cmd) => { if (self.io.onWidget) self.io.onWidget(cmd); };
       const nouvelId = (prefixe) => { self.compteurWidget++; return prefixe + '_' + self.compteurWidget; };
@@ -1923,7 +1977,7 @@ const Lazarus = (function () {
     }
   }
 
-  return { run, toText, LazError, version: '8.0' };
+  return { run, toText, LazError, version: '9.0' };
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = Lazarus;
@@ -2772,6 +2826,7 @@ vox("LAZARUS !")
       onFrame: () => new Promise(r => setTimeout(r, 33)),
       onSon: joueSon,
       onDis: disVoix,
+      onEcoute: ecouteVoix,
       onJeuDemarre: (mode) => addLine(mode === 'interface'
         ? '🖥 Application lancée ! Elle est vivante au-dessus de la console. (⏹ Arrêter pour quitter)'
         : '🎮 Partie lancée ! Clique une fois sur la page, puis joue au clavier. (⏹ Arrêter pour quitter)', 'sys'),
@@ -2814,7 +2869,179 @@ vox("LAZARUS !")
     onWidget({ type: 'efface' });
   });
 
-  addLine('Bienvenue dans LAZARUS v8.0 ! Nouveau : ton programme PARLE (exemple 🗣️), et le bouton 🔗 Partager envoie ton code en un lien !', 'sys');
+
+  // ---------- v9 : LAZARUS écoute (reconnaissance vocale) ----------
+  function ecouteVoix(prompt) {
+    return new Promise((resolve) => {
+      const Reco = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!Reco) {
+        askInput('🎤 ' + prompt + ' (micro indisponible ici — tape ta réponse) ').then(resolve);
+        return;
+      }
+      addLine('🎤 ' + (prompt || 'Je t\'écoute...') + ' (parle maintenant)', 'sys');
+      const r = new Reco();
+      r.lang = 'fr-FR';
+      r.interimResults = false;
+      r.maxAlternatives = 1;
+      let fini = false;
+      const termine = (texte) => {
+        if (fini) return;
+        fini = true;
+        if (texte) addLine('🎤 → « ' + texte + ' »', 'in-echo');
+        resolve(texte || '');
+      };
+      r.onresult = (e) => termine(e.results[0][0].transcript);
+      r.onerror = () => {
+        if (fini) return;
+        fini = true;
+        askInput('🎤 ' + prompt + ' (micro refusé — tape ta réponse) ').then(resolve);
+      };
+      r.onend = () => termine('');
+      try { r.start(); } catch (e) { r.onerror(); }
+    });
+  }
+
+  // ---------- v9 : L'ÉCOLE ----------
+  const LECONS = [
+    { titre: 'Dis bonjour au monde', texte: "En LAZARUS, <code>vox(...)</code> affiche à l'écran — comme une voix qui parle.\n\n🎯 DÉFI : affiche exactement le texte  Bonjour le monde !", code: '# Écris ton code ici :\nvox("...")\n', attendu: ['Bonjour le monde !'], indice: 'vox("Bonjour le monde !")' },
+    { titre: 'Ta première variable', texte: "Une variable, c'est une boîte avec un nom. <code>laz age = 25</code> crée la boîte « age » qui contient 25.\n\n🎯 DÉFI : crée une variable  annee  qui vaut 2026, puis affiche-la avec vox.", code: '# Crée la variable puis affiche-la :\n', attendu: ['2026'], indice: 'laz annee = 2026   puis   vox(annee)' },
+    { titre: 'La machine à calculer', texte: "LAZARUS calcule tout : <code>+</code> <code>-</code> <code>*</code> <code>/</code>.\n\n🎯 DÉFI : affiche le résultat de 7 fois 8 (sans le calculer toi-même !).", code: 'vox(...)\n', attendu: ['56'], indice: 'vox(7 * 8)' },
+    { titre: 'Le texte magique', texte: "Dans un texte entre guillemets, <code>{nom_de_variable}</code> est remplacé par sa valeur : c'est l'interpolation.\n\n🎯 DÉFI : crée  laz prenom = \"Awa\"  puis affiche  Salut Awa !  en utilisant {prenom}.", code: 'laz prenom = "Awa"\n# affiche : Salut Awa !\n', attendu: ['Salut Awa !'], indice: 'vox("Salut {prenom} !")' },
+    { titre: 'Décider avec kan', texte: "<code>kan</code> = « quand/si » : le code entre accolades ne s'exécute QUE si la condition est vraie. <code>sinon</code> = le reste du temps.\n\n🎯 DÉFI : avec  laz age = 20 , affiche  majeur  si age >= 18, sinon  mineur .", code: 'laz age = 20\n# kan ... { ... } sinon { ... }\n', attendu: ['majeur'], indice: 'kan age >= 18 {\n    vox("majeur")\n} sinon {\n    vox("mineur")\n}' },
+    { titre: 'Répéter avec pou', texte: "<code>pou i dan 1..5 { ... }</code> répète le bloc pour i = 1, 2, 3, 4, 5 (bornes INCLUSES).\n\n🎯 DÉFI : affiche les nombres de 1 à 5, un par ligne.", code: '# la boucle pou :\n', attendu: ['1', '2', '3', '4', '5'], indice: 'pou i dan 1..5 {\n    vox(i)\n}' },
+    { titre: 'Le compte à rebours', texte: "<code>tanke</code> = « tant que » : répète TANT QUE la condition est vraie. Attention à faire évoluer la variable, sinon boucle infinie !\n\n🎯 DÉFI : un compte à rebours qui affiche 3, puis 2, puis 1.", code: 'laz n = 3\n# tanke n > 0 { ... }\n', attendu: ['3', '2', '1'], indice: 'tanke n > 0 {\n    vox(n)\n    n -= 1\n}' },
+    { titre: 'Les listes', texte: "Une liste rassemble plusieurs valeurs : <code>laz fruits = [\"mangue\", \"banane\", \"ananas\"]</code>. <code>taille(fruits)</code> compte les éléments.\n\n🎯 DÉFI : crée une liste de 3 fruits et affiche sa taille.", code: 'laz fruits = [...]\n', attendu: ['3'], indice: 'laz fruits = ["mangue", "banane", "ananas"]\nvox(taille(fruits))' },
+    { titre: 'Ta première fonction', texte: "<code>fonk</code> crée une machine réutilisable : elle reçoit des ingrédients et <code>rend</code> un résultat.\n\n🎯 DÉFI : crée  fonk double(x)  qui rend x * 2, puis affiche double(21).", code: 'fonk double(x) {\n    rend ...\n}\nvox(double(21))\n', attendu: ['42'], indice: 'rend x * 2' },
+    { titre: 'Le dictionnaire', texte: "Un dictionnaire associe des clés à des valeurs : <code>laz d = { \"nom\": \"Awa\", \"age\": 12 }</code>. On lit avec <code>d[\"nom\"]</code>.\n\n🎯 DÉFI : crée un dictionnaire avec la clé \"ville\" qui vaut \"Bamako\", et affiche cette ville.", code: 'laz d = { ... }\n', attendu: ['Bamako'], indice: 'laz d = { "ville": "Bamako" }\nvox(d["ville"])' },
+    { titre: 'La mémoire éternelle', texte: "<code>garde</code> crée une variable qui SE SOUVIENT entre les exécutions — unique au monde !\n\n🎯 DÉFI : crée  garde visites = 0 , ajoute-lui 1, et affiche  Visite numéro {visites} .", code: 'garde visites = 0\n', attendu: ['Visite numéro'], indice: 'visites += 1\nvox("Visite numéro {visites}")' },
+    { titre: 'Dessine !', texte: "<code>toile(largeur, hauteur)</code> ouvre une zone de dessin, puis <code>cercle_plein(x, y, rayon, couleur)</code>...\n\n🎯 DÉFI : crée une toile 200x200 et dessine un cercle plein doré (couleur \"or\") au milieu (100, 100), rayon 50.", code: 'toile(200, 200)\n', attenduDessin: 'cercle', attendu: [], indice: 'cercle_plein(100, 100, 50, "or")' },
+  ];
+
+  const btnEcole = document.getElementById('btnEcole');
+  const ecolePanel = document.getElementById('ecolePanel');
+  const ecTitre = document.getElementById('ecTitre');
+  const ecSerie = document.getElementById('ecSerie');
+  const ecPoints = document.getElementById('ecPoints');
+  const ecTexte = document.getElementById('ecTexte');
+  const ecMsg = document.getElementById('ecMsg');
+  const ecVerifier = document.getElementById('ecVerifier');
+  const ecSuivant = document.getElementById('ecSuivant');
+  const ecIndice = document.getElementById('ecIndice');
+  const ecQuitter = document.getElementById('ecQuitter');
+  let ecoleActive = false;
+  let leconIdx = 0;
+
+  function chargeEcole() {
+    try { return JSON.parse(localStorage.getItem('lazarus_ecole')) || { faits: [], serie: 0, dernier: '' }; }
+    catch (e) { return window.__lazEcole || { faits: [], serie: 0, dernier: '' }; }
+  }
+  function sauveEcole(d) {
+    try { localStorage.setItem('lazarus_ecole', JSON.stringify(d)); }
+    catch (e) { window.__lazEcole = d; }
+  }
+
+  function montreLecon(i) {
+    leconIdx = i;
+    const l = LECONS[i];
+    const d = chargeEcole();
+    ecTitre.textContent = '🎓 Leçon ' + (i + 1) + '/' + LECONS.length + ' — ' + l.titre;
+    ecSerie.textContent = d.serie > 0 ? '🔥 Série : ' + d.serie + ' jour' + (d.serie > 1 ? 's' : '') : '';
+    ecTexte.innerHTML = l.texte.replace(/\n/g, '<br>');
+    ecMsg.style.display = 'none';
+    ecSuivant.style.display = d.faits[i] ? 'inline-block' : 'none';
+    editor.value = l.code;
+    updateLinenos();
+    ecPoints.innerHTML = '';
+    LECONS.forEach((_, j) => {
+      const p = document.createElement('div');
+      p.className = 'ec-point' + (d.faits[j] ? ' fait' : '') + (j === i ? ' actuel' : '');
+      p.title = 'Leçon ' + (j + 1) + ' : ' + LECONS[j].titre;
+      p.addEventListener('click', () => montreLecon(j));
+      ecPoints.appendChild(p);
+    });
+  }
+
+  btnEcole.addEventListener('click', () => {
+    ecoleActive = true;
+    ecolePanel.style.display = 'block';
+    const d = chargeEcole();
+    let premiere = LECONS.findIndex((_, j) => !d.faits[j]);
+    if (premiere < 0) premiere = 0;
+    montreLecon(premiere);
+    addLine('🎓 Bienvenue à l\'École LAZARUS ! Lis la leçon en haut, écris ton code, puis clique « Vérifier ma réponse ».', 'sys');
+  });
+  ecQuitter.addEventListener('click', () => {
+    ecoleActive = false;
+    ecolePanel.style.display = 'none';
+  });
+  ecIndice.addEventListener('click', () => {
+    addLine('💡 Indice : ', 'sys');
+    addLine(LECONS[leconIdx].indice, 'out');
+  });
+  ecSuivant.addEventListener('click', () => {
+    if (leconIdx + 1 < LECONS.length) montreLecon(leconIdx + 1);
+  });
+
+  ecVerifier.addEventListener('click', async () => {
+    if (running) return;
+    const l = LECONS[leconIdx];
+    const sortie = [];
+    let dessinVu = '';
+    consoleEl.innerHTML = '';
+    addLine('🎓 Vérification de la leçon ' + (leconIdx + 1) + '...', 'sys');
+    const res = await Lazarus.run(editor.value, {
+      onPrint: (x) => { sortie.push(x); addLine(x, 'out'); },
+      onInput: async () => '',
+      shouldStop: () => false,
+      onClear: () => { },
+      onDraw: (cmd) => { dessinVu += ' ' + cmd.type; onDraw(cmd); },
+      fs: new Map(),
+      memoire: {},
+      onSauveMemoire: () => { },
+      toucheEnfoncee: () => false,
+      onFrame: () => new Promise((r) => setTimeout(r, 5)),
+      onSon: () => { },
+      onDis: (x) => addLine('🗣️ ' + x, 'sys'),
+      onEcoute: async () => '',
+    });
+    const texteSortie = sortie.join('\n');
+    let gagne = res.ok !== false || res.stopped;
+    if (!res.ok && !res.stopped) {
+      addLine(res.error, 'err');
+      gagne = false;
+    }
+    if (gagne) gagne = l.attendu.every((a) => texteSortie.includes(a));
+    if (gagne && l.attenduDessin) gagne = dessinVu.includes(l.attenduDessin);
+    ecMsg.style.display = 'block';
+    if (gagne) {
+      ecMsg.className = 'ec-msg gagne';
+      ecMsg.textContent = '🎉 BRAVO ! Leçon réussie !';
+      joueSon('victoire');
+      const d = chargeEcole();
+      d.faits[leconIdx] = true;
+      const aujourdhui = new Date().toDateString();
+      if (d.dernier !== aujourdhui) {
+        const hier = new Date(Date.now() - 86400000).toDateString();
+        d.serie = (d.dernier === hier) ? (d.serie || 0) + 1 : 1;
+        d.dernier = aujourdhui;
+      }
+      sauveEcole(d);
+      const toutes = LECONS.every((_, j) => d.faits[j]);
+      if (toutes) {
+        addLine('🏆 INCROYABLE : tu as terminé TOUTES les leçons de l\'École LAZARUS ! Tu sais coder. Le monde t\'attend.', 'sys');
+      }
+      montreLecon(leconIdx);
+      ecMsg.style.display = 'block';
+      ecMsg.className = 'ec-msg gagne';
+      ecMsg.textContent = toutes ? '🏆 ÉCOLE TERMINÉE — tu sais coder !' : '🎉 BRAVO ! Clique « → Leçon suivante ».';
+    } else {
+      ecMsg.className = 'ec-msg perdu';
+      ecMsg.textContent = '🤔 Pas encore — regarde ce que ton code affiche dans la console, ou demande un 💡 Indice.';
+      joueSon('clic');
+    }
+  });
+
+  addLine('Bienvenue dans LAZARUS v9.0 ! ÉNORME : clique sur 🎓 L\'École — 12 leçons pour apprendre à coder, directement ici. Et ton programme peut t\'écouter : ecoute() !', 'sys');
 })();
 </script>
 
