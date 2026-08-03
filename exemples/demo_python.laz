@@ -1,0 +1,34 @@
+#langue: python
+# ===== v11.0 : LE PYTHON BIENVEILLANT =====
+# Du VRAI Python (niveau seconde) — mais avec les erreurs
+# expliquées en français et l'environnement qui pardonne.
+
+def moyenne(notes):
+    total = 0
+    for n in notes:
+        total += n
+    return total / len(notes)
+
+notes = [12, 15, 18]
+print("Moyenne :", round(moyenne(notes), 1))
+
+prenom = input("Ton prénom ? ")
+print(f"Salut {prenom} !")
+
+for i in range(1, 6):
+    print(i, "au carré :", i ** 2)
+
+compte = 3
+while compte > 0:
+    print("Décompte :", compte)
+    compte -= 1
+
+fruits = ["mangue", "banane"]
+fruits.append("ananas")
+print(len(fruits), "fruits, dont", fruits[-1].upper())
+
+import random
+print("Dé :", random.randint(1, 6))
+
+# Fais une faute exprès (efface un ':' ou écris "prenon")
+# et regarde l'erreur : elle est en FRANÇAIS et elle t'explique.

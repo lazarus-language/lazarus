@@ -713,6 +713,37 @@ C'est un simulateur — le même outil qu'utilisent les étudiants et les
 ingénieurs pour apprendre, avant de toucher aux vraies machines d'IBM.
 La superposition, l'intrication, l'interférence : tout y est, en français.
 
+## 31. Le PYTHON BIENVEILLANT 🐍 *(v11)*
+
+La réponse à la question « pourquoi apprendre deux langages ? » : n'en
+apprenez qu'un. Écrivez `#langue: python` en première ligne, et LAZARUS
+lit du VRAI Python — celui du lycée : `def`, `if/elif/else`, `while`,
+`for ... in range()`, `print`, `input`, listes, dictionnaires, f-strings,
+`try/except`, `random.randint`...
+
+```python
+#langue: python
+def moyenne(notes):
+    total = 0
+    for n in notes:
+        total += n
+    return total / len(notes)
+
+print("Moyenne :", moyenne([12, 15, 18]))
+```
+
+La différence avec le vrai interpréteur Python ? TOUT l'environnement
+bienveillant de LAZARUS reste là : les erreurs en français qui expliquent
+et proposent la correction, le « film » des dernières affectations quand
+ça plante, l'exécution au ralenti, le playground sans installation, le
+hors-ligne. L'élève écrit du Python authentique — copiable tel quel en
+cours — dans un cocon qui pardonne.
+
+C'est un sous-ensemble pédagogique : pas de classes ni d'imports de
+bibliothèques (à part random et math.sqrt) — exactement le périmètre des
+débuts. Le jour où l'élève dépasse ce périmètre, il est prêt pour le
+vrai Python — et il le connaît déjà.
+
 ---
 
-*LAZARUS v10.0 — créé par Ladji. Même le quantique parle français.*
+*LAZARUS v11.0 — créé par Ladji. Même Python devient bienveillant.*

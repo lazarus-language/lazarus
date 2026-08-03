@@ -645,7 +645,10 @@ class Env:
             if name in env.vars:
                 return env.vars[name]
             env = env.parent
-        raise LazError(f"la variable « {name} » n'existe pas (déclare-la avec : laz {name} = ...)", line)
+        raise LazError(
+                (f"la variable « {name} » n'existe pas (déclare-la d'abord avec : {name} = ...)"
+                 if MODE_PYTHON['actif'] else
+                 f"la variable « {name} » n'existe pas (déclare-la avec : laz {name} = ...)"), line)
 
     def declare(self, name, value):
         self.vars[name] = value
@@ -657,7 +660,10 @@ class Env:
                 env.vars[name] = value
                 return
             env = env.parent
-        raise LazError(f"la variable « {name} » n'existe pas (déclare-la avec : laz {name} = ...)", line)
+        raise LazError(
+                (f"la variable « {name} » n'existe pas (déclare-la d'abord avec : {name} = ...)"
+                 if MODE_PYTHON['actif'] else
+                 f"la variable « {name} » n'existe pas (déclare-la avec : laz {name} = ...)"), line)
 
 # ============================================================
 #  VALEURS ET FONCTIONS
@@ -1062,6 +1068,36 @@ def make_builtins(env, interp=None):
             reponse = ''
         return reponse
 
+    # --- aides internes du mode Python (v11) ---
+    def b_plage(args, line):
+        _need(args, 1, 'range', line)
+        vals = [int(check_number(a, line, 'range()')) for a in args]
+        if len(vals) == 1:
+            return list(range(vals[0]))
+        if len(vals) == 2:
+            return list(range(vals[0], vals[1]))
+        if vals[2] == 0:
+            raise LazError('range() : le pas ne peut pas être zéro', line)
+        return list(range(vals[0], vals[1], vals[2]))
+
+    def b_ent(args, line):
+        _need(args, 1, 'int', line)
+        v = args[0]
+        if isinstance(v, bool):
+            return 1 if v else 0
+        if isinstance(v, (int, float)):
+            return int(v)
+        if isinstance(v, str):
+            try:
+                return int(float(v.strip().replace(',', '.')))
+            except ValueError:
+                raise LazError(f"impossible de convertir « {to_text(v)} » en nombre entier", line)
+        raise LazError('int() attend un nombre ou un texte', line)
+
+    def b_abs(args, line):
+        _need(args, 1, 'abs', line)
+        return abs(check_number(args[0], line, 'abs()'))
+
     # --- nouveautés v10.0 : LAZARUS QUANTIQUE ! ---
     # Un vrai simulateur quantique pédagogique : vecteur d'état complet,
     # portes H/X/Z/CNOT, mesure avec effondrement. Jusqu'à 10 qubits.
@@ -1420,6 +1456,10 @@ def make_builtins(env, interp=None):
         'joue_son': b_joue_son,             # jouer un petit son (piece, saut, explosion...)
         'dis': b_dis,                       # v8 : LAZARUS parle à voix haute !
         'ecoute': b_ecoute,                 # v9 : LAZARUS écoute ta voix (playground)
+        # --- aides internes du mode Python (v11) ---
+        '__plage': b_plage,                 # range() de Python (fin exclue)
+        '__ent': b_ent,                     # int() de Python (troncature)
+        '__abs': b_abs,                     # abs() de Python
         # --- nouveautés v10.0 : le mode QUANTIQUE ---
         'qubits': b_qubits,                 # créer le registre quantique (1 à 10 qubits)
         'superpose': b_superpose,           # porte Hadamard : superposition !
@@ -1445,6 +1485,492 @@ def make_builtins(env, interp=None):
 # ============================================================
 #  INTERPRÉTEUR
 # ============================================================
+
+
+# ============================================================
+#  v11.0 : LE MODE PYTHON BIENVEILLANT
+#  Un second lecteur : du vrai Python (sous-ensemble pédagogique),
+#  exécuté par le runtime bienveillant de LAZARUS.
+#  Activé par « #langue: python » en tête de fichier.
+# ============================================================
+
+PY_MOTS = {'def', 'return', 'if', 'elif', 'else', 'while', 'for', 'in',
+           'break', 'continue', 'pass', 'and', 'or', 'not',
+           'True', 'False', 'None', 'try', 'except', 'as', 'import', 'from'}
+
+PY_FONCTIONS = {'print': 'vox', 'input': 'demand', 'len': 'taille',
+                'str': 'texte', 'float': 'nombre', 'int': '__ent',
+                'round': 'arondi', 'sorted': 'tri', 'abs': '__abs'}
+
+PY_METHODES = {'append': ('ajoute', 1), 'pop': ('retire', None),
+               'upper': ('majus', 0), 'lower': ('minus', 0),
+               'split': ('koupe', None), 'replace': ('remplace', 2),
+               'join': ('colle', 1)}
+
+PY_OPS2 = ('**', '//', '==', '!=', '<=', '>=', '+=', '-=', '*=', '/=')
+
+
+def py_tokenize(source):
+    tokens = []
+    indents = [0]
+    lignes = source.split('\n')
+    profondeur = 0
+    for num, brute in enumerate(lignes, 1):
+        # ligne vide ou commentaire seul : on ignore
+        depouillee = brute.strip()
+        if profondeur == 0:
+            if depouillee == '' or depouillee.startswith('#'):
+                continue
+            # indentation
+            larg = 0
+            for c in brute:
+                if c == ' ':
+                    larg += 1
+                elif c == '\t':
+                    larg += 4
+                else:
+                    break
+            if larg > indents[-1]:
+                indents.append(larg)
+                tokens.append(('INDENT', None, num))
+            while larg < indents[-1]:
+                indents.pop()
+                tokens.append(('DEDENT', None, num))
+            if larg != indents[-1]:
+                raise LazError("indentation incohérente : aligne cette ligne avec le bloc auquel elle appartient", num)
+        i = 0
+        n = len(brute)
+        while i < n:
+            c = brute[i]
+            if c in ' \t':
+                i += 1
+                continue
+            if c == '#':
+                break
+            # f-string ou string
+            est_f = False
+            if c in 'fF' and i + 1 < n and brute[i + 1] in '"\'':
+                est_f = True
+                i += 1
+                c = brute[i]
+            if c in '"\'':
+                quote = c
+                i += 1
+                buf = ''
+                ferme = False
+                while i < n:
+                    ch = brute[i]
+                    if ch == '\\' and i + 1 < n:
+                        nxt = brute[i + 1]
+                        esc = {'n': '\n', 't': '\t', '"': '"', "'": "'", '\\': '\\'}
+                        buf += esc.get(nxt, nxt)
+                        i += 2
+                        continue
+                    if ch == quote:
+                        ferme = True
+                        i += 1
+                        break
+                    buf += ch
+                    i += 1
+                if not ferme:
+                    raise LazError(f"chaîne de caractères non fermée (il manque un {quote} )", num)
+                if not est_f:
+                    buf = buf.replace('{', '{{').replace('}', '}}')
+                tokens.append(('STRING', buf, num))
+                continue
+            if c.isdigit() or (c == '.' and i + 1 < n and brute[i + 1].isdigit()):
+                debut = i
+                while i < n and (brute[i].isdigit() or brute[i] == '.'):
+                    i += 1
+                tokens.append(('NUMBER', float(brute[debut:i]), num))
+                continue
+            if c.isalpha() or c == '_':
+                debut = i
+                while i < n and (brute[i].isalnum() or brute[i] == '_'):
+                    i += 1
+                mot = brute[debut:i]
+                if mot in PY_MOTS:
+                    tokens.append(('KW', mot, num))
+                else:
+                    tokens.append(('IDENT', mot, num))
+                continue
+            deux = brute[i:i + 2]
+            if deux in PY_OPS2:
+                tokens.append(('OP', deux, num))
+                i += 2
+                continue
+            if c in '+-*/%=<>()[]{},:.':
+                if c in '([{':
+                    profondeur += 1
+                elif c in ')]}':
+                    profondeur = max(0, profondeur - 1)
+                tokens.append(('OP', c, num))
+                i += 1
+                continue
+            if c == ';':
+                raise LazError("pas de point-virgule en Python — une instruction par ligne", num)
+            raise LazError(f"caractère inconnu : '{c}'", num)
+        if profondeur == 0 and tokens and tokens[-1][0] not in ('NEWLINE', 'INDENT', 'DEDENT'):
+            tokens.append(('NEWLINE', None, num))
+    while len(indents) > 1:
+        indents.pop()
+        tokens.append(('DEDENT', None, len(lignes)))
+    tokens.append(('EOF', None, len(lignes)))
+    return tokens
+
+
+class PyParser:
+    """Analyse un sous-ensemble pédagogique de Python et produit
+    l'AST LAZARUS — mêmes nœuds, même runtime bienveillant."""
+
+    def __init__(self, tokens):
+        self.tokens = tokens
+        self.pos = 0
+        self.scopes = [set()]
+
+    def peek(self):
+        return self.tokens[self.pos]
+
+    def next(self):
+        tok = self.tokens[self.pos]
+        self.pos += 1
+        return tok
+
+    def check(self, t, v=None):
+        tok = self.peek()
+        if tok[0] != t:
+            return False
+        if v is not None and tok[1] != v:
+            return False
+        return True
+
+    def accept(self, t, v=None):
+        if self.check(t, v):
+            return self.next()
+        return None
+
+    def expect(self, t, v=None, quoi=None):
+        tok = self.peek()
+        if not self.check(t, v):
+            attendu = quoi or v or t
+            trouve = tok[1] if tok[1] is not None else {'NEWLINE': 'une fin de ligne', 'EOF': 'la fin du fichier', 'INDENT': 'une indentation', 'DEDENT': 'une fin de bloc'}.get(tok[0], tok[0])
+            raise LazError(f"j'attendais « {attendu} » mais j'ai trouvé « {trouve} »", tok[2])
+        return self.next()
+
+    def saute_lignes(self):
+        while self.check('NEWLINE'):
+            self.next()
+
+    def parse_program(self):
+        stmts = []
+        self.saute_lignes()
+        while not self.check('EOF'):
+            stmts.append(self.parse_statement())
+            self.saute_lignes()
+        return ('block', stmts)
+
+    def parse_bloc(self, line):
+        self.expect('OP', ':', "les deux-points ':' à la fin de la ligne")
+        self.expect('NEWLINE', quoi='un passage à la ligne après les deux-points')
+        self.saute_lignes()
+        if not self.check('INDENT'):
+            raise LazError("le bloc doit être indenté (décalé vers la droite, par exemple de 4 espaces)", self.peek()[2])
+        self.next()
+        stmts = []
+        self.saute_lignes()
+        while not self.check('DEDENT') and not self.check('EOF'):
+            stmts.append(self.parse_statement())
+            self.saute_lignes()
+        self.accept('DEDENT')
+        return ('block', stmts)
+
+    def declare_ou_assigne(self, nom):
+        if nom in self.scopes[-1]:
+            return 'assign'
+        self.scopes[-1].add(nom)
+        return 'declare'
+
+    def parse_statement(self):
+        tok = self.peek()
+        line = tok[2]
+
+        if self.accept('KW', 'def'):
+            nom = self.expect('IDENT', quoi='un nom de fonction')[1]
+            self.expect('OP', '(', '(')
+            params = []
+            if not self.check('OP', ')'):
+                params.append(self.expect('IDENT', quoi='un nom de paramètre')[1])
+                while self.accept('OP', ','):
+                    params.append(self.expect('IDENT', quoi='un nom de paramètre')[1])
+            self.expect('OP', ')', ')')
+            self.scopes[-1].add(nom)
+            self.scopes.append(set(params))
+            corps = self.parse_bloc(line)
+            self.scopes.pop()
+            return ('fonk', nom, params, corps, line)
+
+        if self.accept('KW', 'if'):
+            return self.parse_if(line)
+
+        if self.accept('KW', 'while'):
+            cond = self.parse_expression()
+            corps = self.parse_bloc(line)
+            return ('tanke', cond, corps, line)
+
+        if self.accept('KW', 'for'):
+            var = self.expect('IDENT', quoi='un nom de variable')[1]
+            self.expect('KW', 'in', 'in')
+            iterable = self.parse_expression()
+            self.scopes[-1].add(var)
+            corps = self.parse_bloc(line)
+            return ('pou', var, iterable, corps, line)
+
+        if self.accept('KW', 'return'):
+            if self.check('NEWLINE'):
+                return ('rend', None, line)
+            return ('rend', self.parse_expression(), line)
+
+        if self.accept('KW', 'break'):
+            return ('kase', line)
+        if self.accept('KW', 'continue'):
+            return ('swiv', line)
+        if self.accept('KW', 'pass'):
+            return ('expr', ('walu',), line)
+
+        if self.accept('KW', 'try'):
+            corps = self.parse_bloc(line)
+            self.saute_lignes()
+            self.expect('KW', 'except', "except (après un try, il faut un except)")
+            nom_erreur = 'erreur'
+            if self.check('IDENT'):
+                self.next()
+                if self.accept('KW', 'as'):
+                    nom_erreur = self.expect('IDENT', quoi="un nom pour l'erreur")[1]
+            self.scopes[-1].add(nom_erreur)
+            gestion = self.parse_bloc(line)
+            return ('essaie', corps, nom_erreur, gestion, line)
+
+        if self.accept('KW', 'import'):
+            module = self.expect('IDENT', quoi='un nom de module')[1]
+            if module not in ('random', 'math'):
+                raise LazError(f"le module « {module} » n'est pas disponible dans le mode Python pédagogique (disponibles : random, math)", line)
+            return ('expr', ('walu',), line)
+
+        if self.accept('KW', 'from'):
+            raise LazError("« from ... import ... » n'est pas disponible — utilise « import random » et random.randint(...)", line)
+
+        # affectation ou expression
+        expr = self.parse_expression()
+        optok = self.peek()
+        if optok[0] == 'OP' and optok[1] in ('=', '+=', '-=', '*=', '/='):
+            self.next()
+            valeur = self.parse_expression()
+            if optok[1] != '=':
+                valeur = ('binop', optok[1][0], expr, valeur, line)
+            if expr[0] == 'var':
+                genre = self.declare_ou_assigne(expr[1])
+                return (genre, expr[1], valeur, line)
+            if expr[0] == 'index':
+                return ('assign_index', expr[1], expr[2], valeur, line)
+            raise LazError("on ne peut affecter qu'une variable ou une case de liste/dictionnaire", line)
+        return ('expr', expr, line)
+
+    def parse_if(self, line):
+        cond = self.parse_expression()
+        corps = self.parse_bloc(line)
+        sinon = None
+        pos_sauv = self.pos
+        self.saute_lignes()
+        if self.accept('KW', 'elif'):
+            l2 = self.tokens[self.pos - 1][2]
+            sinon = ('block', [self.parse_if(l2)])
+        elif self.accept('KW', 'else'):
+            l2 = self.tokens[self.pos - 1][2]
+            sinon = self.parse_bloc(l2)
+        else:
+            self.pos = pos_sauv
+        return ('kan', cond, corps, sinon, line)
+
+    # ---------- expressions ----------
+
+    def parse_expression(self):
+        return self.parse_or()
+
+    def parse_or(self):
+        gauche = self.parse_and()
+        while self.check('KW', 'or'):
+            line = self.next()[2]
+            gauche = ('or', gauche, self.parse_and(), line)
+        return gauche
+
+    def parse_and(self):
+        gauche = self.parse_not()
+        while self.check('KW', 'and'):
+            line = self.next()[2]
+            gauche = ('and', gauche, self.parse_not(), line)
+        return gauche
+
+    def parse_not(self):
+        if self.check('KW', 'not'):
+            line = self.next()[2]
+            return ('not', self.parse_not(), line)
+        return self.parse_comparaison()
+
+    def parse_comparaison(self):
+        gauche = self.parse_addition()
+        while self.peek()[0] == 'OP' and self.peek()[1] in ('==', '!=', '<', '>', '<=', '>='):
+            op = self.next()
+            gauche = ('cmp', op[1], gauche, self.parse_addition(), op[2])
+        return gauche
+
+    def parse_addition(self):
+        gauche = self.parse_multiplication()
+        while self.peek()[0] == 'OP' and self.peek()[1] in ('+', '-'):
+            op = self.next()
+            gauche = ('binop', op[1], gauche, self.parse_multiplication(), op[2])
+        return gauche
+
+    def parse_multiplication(self):
+        gauche = self.parse_unaire()
+        while self.peek()[0] == 'OP' and self.peek()[1] in ('*', '/', '//', '%'):
+            op = self.next()
+            gauche = ('binop', op[1], gauche, self.parse_unaire(), op[2])
+        return gauche
+
+    def parse_unaire(self):
+        if self.check('OP', '-'):
+            line = self.next()[2]
+            return ('neg', self.parse_unaire(), line)
+        return self.parse_puissance()
+
+    def parse_puissance(self):
+        base = self.parse_postfixe()
+        if self.check('OP', '**'):
+            line = self.next()[2]
+            return ('binop', '**', base, self.parse_unaire(), line)
+        return base
+
+    def parse_postfixe(self):
+        expr = self.parse_primaire()
+        while True:
+            tok = self.peek()
+            if self.accept('OP', '('):
+                args = []
+                if not self.check('OP', ')'):
+                    args.append(self.parse_expression())
+                    while self.accept('OP', ','):
+                        args.append(self.parse_expression())
+                self.expect('OP', ')', ')')
+                expr = self.traduit_appel(expr, args, tok[2])
+                continue
+            if self.accept('OP', '['):
+                index = self.parse_expression()
+                self.expect('OP', ']', ']')
+                expr = ('index', expr, index, tok[2])
+                continue
+            if self.accept('OP', '.'):
+                nom = self.expect('IDENT', quoi='un nom de méthode')[1]
+                expr = ('pymeth', expr, nom, tok[2])
+                continue
+            break
+        if expr[0] == 'pymeth':
+            raise LazError(f"la méthode .{expr[2]} doit être appelée avec des parenthèses", expr[3])
+        return expr
+
+    def traduit_appel(self, callee, args, line):
+        if callee[0] == 'pymeth':
+            _, objet, nom, l2 = callee
+            if objet[0] == 'var' and objet[1] == 'random':
+                if nom == 'randint':
+                    return ('call', ('var', 'hasard', l2), args, line)
+                raise LazError(f"random.{nom} n'est pas disponible (disponible : random.randint(a, b))", line)
+            if objet[0] == 'var' and objet[1] == 'math':
+                if nom == 'sqrt':
+                    return ('binop', '**', args[0], ('num', 0.5), line)
+                raise LazError(f"math.{nom} n'est pas disponible (disponible : math.sqrt(x))", line)
+            if nom in PY_METHODES:
+                cible, nb = PY_METHODES[nom]
+                if nom == 'join':
+                    return ('call', ('var', 'colle', l2), [args[0], objet], line)
+                if nom == 'pop':
+                    idx = args[0] if args else ('num', -1.0)
+                    return ('call', ('var', 'retire', l2), [objet, idx], line)
+                if nom == 'split':
+                    sep = args[0] if args else ('str', ' ')
+                    return ('call', ('var', 'koupe', l2), [objet, sep], line)
+                return ('call', ('var', cible, l2), [objet] + args, line)
+            dispo = ', '.join(sorted(PY_METHODES))
+            raise LazError(f"la méthode .{nom} n'est pas disponible dans le mode Python pédagogique (disponibles : {dispo})", line)
+        if callee[0] == 'var':
+            nom = callee[1]
+            if nom == 'range':
+                return ('call', ('var', '__plage', callee[2]), args, line)
+            if nom in PY_FONCTIONS:
+                return ('call', ('var', PY_FONCTIONS[nom], callee[2]), args, line)
+        return ('call', callee, args, line)
+
+    def parse_primaire(self):
+        tok = self.peek()
+        line = tok[2]
+        if tok[0] == 'NUMBER':
+            self.next()
+            v = tok[1]
+            return ('num', int(v) if v.is_integer() else v)
+        if tok[0] == 'STRING':
+            self.next()
+            return ('str', tok[1])
+        if self.accept('KW', 'True'):
+            return ('bool', True)
+        if self.accept('KW', 'False'):
+            return ('bool', False)
+        if self.accept('KW', 'None'):
+            return ('walu',)
+        if tok[0] == 'IDENT':
+            self.next()
+            return ('var', tok[1], line)
+        if self.accept('OP', '('):
+            e = self.parse_expression()
+            self.expect('OP', ')', ')')
+            return e
+        if self.accept('OP', '['):
+            items = []
+            if not self.check('OP', ']'):
+                items.append(self.parse_expression())
+                while self.accept('OP', ','):
+                    if self.check('OP', ']'):
+                        break
+                    items.append(self.parse_expression())
+            self.expect('OP', ']', ']')
+            return ('list', items, line)
+        if self.accept('OP', '{'):
+            paires = []
+            if not self.check('OP', '}'):
+                k = self.parse_expression()
+                self.expect('OP', ':', ':')
+                paires.append((k, self.parse_expression()))
+                while self.accept('OP', ','):
+                    if self.check('OP', '}'):
+                        break
+                    k = self.parse_expression()
+                    self.expect('OP', ':', ':')
+                    paires.append((k, self.parse_expression()))
+            self.expect('OP', '}', '}')
+            return ('dict', paires, line)
+        trouve = tok[1] if tok[1] is not None else {'NEWLINE': 'une fin de ligne', 'EOF': 'la fin du fichier', 'DEDENT': 'une fin de bloc'}.get(tok[0], tok[0])
+        raise LazError(f"expression attendue, mais j'ai trouvé « {trouve} »", line)
+
+
+PY_MODE_RE = re.compile(r'#\s*langue\s*:\s*python', re.IGNORECASE)
+MODE_PYTHON = {'actif': False}
+
+
+def est_mode_python(source):
+    return any(PY_MODE_RE.search(l) for l in source.split('\n')[:3])
+
+
+def parse_python(source):
+    return PyParser(py_tokenize(source)).parse_program()
+
 
 class Interpreter:
     def __init__(self):
@@ -1500,6 +2026,12 @@ class Interpreter:
             pass
 
     def run(self, source):
+        # v11 : le mode PYTHON BIENVEILLANT
+        if est_mode_python(source):
+            MODE_PYTHON['actif'] = True
+            ast = parse_python(source)
+            return self.exec_block(ast, self.globals)
+        MODE_PYTHON['actif'] = False
         _, langue_map = detecte_langue(source)
         tokens = tokenize(source, langue_map)
         ast = Parser(tokens).parse_program()
@@ -1779,6 +2311,12 @@ class Interpreter:
                 if right == 0:
                     raise LazError("modulo par zéro impossible", line)
                 return left % right
+            if op == '//':
+                if right == 0:
+                    raise LazError("division par zéro impossible", line)
+                return int(left // right)
+            if op == '**':
+                return left ** right
 
         if kind == 'index':
             _, target_node, index_node, line = node

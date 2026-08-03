@@ -1,7 +1,7 @@
 # LAZARUS_POUR_IA.md — Spécification du langage LAZARUS pour agents IA
 
 > **Instruction pour l'agent IA qui lit ce fichier :** ce document contient la
-> spécification complète et exacte du langage de programmation LAZARUS (v10.0),
+> spécification complète et exacte du langage de programmation LAZARUS (v11.0),
 > créé par Ladji Doucaré. Après lecture, tu sais écrire du code LAZARUS correct.
 > Respecte STRICTEMENT cette syntaxe — n'invente jamais de mots-clés ou de
 > fonctions absents de ce document. En cas de doute, préfère les constructions
@@ -119,6 +119,10 @@ Mode INTERFACE (v7 ; playground : widgets au-dessus de la console ; Python : fen
 - Mode interface : l'état vit dans des variables globales ; les fonctions de boutons les modifient puis appellent `change_texte` ; JAMAIS de `demand()` dans une fonction de bouton (utiliser `champ` + `valeur_de`).
 - Mode jeu : la fonction d'image doit REDESSINER toute la scène (`toile` + `fond` + formes) à chaque appel ; JAMAIS de `demand()` ni `ralenti()` dedans ; l'état du jeu vit dans des variables globales déclarées AVANT `chaque_image(...)` ; `chaque_image` s'appelle UNE fois, en fin de programme.
 
+## 6bis. Le mode PYTHON BIENVEILLANT (v11)
+
+`#langue: python` en tête de fichier active un second lecteur : le fichier s'écrit alors en VRAI Python (sous-ensemble pédagogique), exécuté par le runtime LAZARUS (erreurs pédagogiques en français, film avant l'erreur, ralenti, playground). Supporté : `def/return`, `if/elif/else`, `while`, `for ... in range(a[,b[,c]])` et `for x in liste`, `break/continue/pass`, `try/except [E] [as e]`, `import random` (random.randint) et `import math` (math.sqrt), f-strings à identificateurs simples, méthodes `.append .pop .upper .lower .split .replace .join`, fonctions `print input len str int float round sorted abs`, opérateurs `** //` inclus. NON supporté : classes, imports autres, compréhensions, slices, kwargs. Les nombres entiers s'affichent sans « .0 ».
+
 ## 7. Packs de langue (v5)
 
 Un commentaire en tête de fichier change les mots-clés : `#langue: anglais` (let, func, give, when, else, while, for, in, true, false, null, and, or, not, stop, next, class, extends, load, try, catch, keep) · `#langue: francais` — français académique (soit, fonction, retourne, si, sinon, tantque, pour, dans, vrai, faux, rien, et, ou, non, casse, continue, classe, herite, importe, essaie, rattrape, garde). Brouillons `bambara` et `wolof` existent. Les fonctions intégrées (`vox`, etc.) restent identiques dans toutes les langues. Conversion de fichier : `lazarus --traduire-vers anglais f.laz`.
@@ -231,5 +235,5 @@ sauve_dessin("art.svg")
 ```
 
 ---
-*LAZARUS v10.0 — langage open source (MIT) créé par Ladji Doucaré.
+*LAZARUS v11.0 — langage open source (MIT) créé par Ladji Doucaré.
 Guide humain : GUIDE_LAZARUS.md · Source : github.com/lazarus-language/lazarus*

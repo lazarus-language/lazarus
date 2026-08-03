@@ -328,7 +328,7 @@
 <header>
   <div class="logo">LAZARUS</div>
   <div class="tagline">Le langage de programmation créé par <b>Ladji</b> — accolades comme Java, simplicité de Python, mots-clés uniques.</div>
-  <div class="version">v10.0</div>
+  <div class="version">v11.0</div>
 </header>
 
 <div class="toolbar">
@@ -353,6 +353,7 @@
     <option value="francais">🇫🇷 v7.1 : le pack français académique (#langue:)</option>
     <option value="parle">🗣️ v8.0 : LAZARUS PARLE — la voix !</option>
     <option value="quantique">⚛️ v10.0 : LAZARUS QUANTIQUE !</option>
+    <option value="python">🐍 v11.0 : LE PYTHON BIENVEILLANT !</option>
   </select>
   <button id="btnClear">🗑 Effacer la console</button>
   <button id="btnShare">🔗 Partager</button>
@@ -482,6 +483,8 @@ ralenti(0.5) · #langue: anglais/francais
 v6.0 : chaque_image(ma_fonk)
 touche_pressee("droite") arrete_jeu()
 joue_son("piece") · 30 images/s
+v11 : #langue: python → du VRAI
+Python, erreurs en français !
 v10 : qubits superpose intrique
 mesure probabilites → QUANTIQUE !
 v8.0 : dis("texte") → il PARLE !
@@ -495,7 +498,7 @@ efface_interface() → des APPLIS !
 </details>
 
 <footer>
-  <b>LAZARUS v10.0</b> — créé par Ladji · Un langage libre et gratuit, pour tout le monde · <a href="https://github.com/lazarus-language/lazarus" style="color:#f0b429">GitHub</a> · pip install lazarus-lang
+  <b>LAZARUS v11.0</b> — créé par Ladji · Un langage libre et gratuit, pour tout le monde · <a href="https://github.com/lazarus-language/lazarus" style="color:#f0b429">GitHub</a> · pip install lazarus-lang
 </footer>
 
 <script>
@@ -1004,13 +1007,17 @@ const Lazarus = (function () {
     get(name, line) {
       let e = this;
       while (e) { if (e.vars.has(name)) return e.vars.get(name); e = e.parent; }
-      throw new LazError(`la variable « ${name} » n'existe pas (déclare-la avec : laz ${name} = ...)`, line);
+      throw new LazError(MODE_PYTHON.actif
+          ? `la variable « ${name} » n'existe pas (déclare-la d'abord avec : ${name} = ...)`
+          : `la variable « ${name} » n'existe pas (déclare-la avec : laz ${name} = ...)`, line);
     }
     declare(name, value) { this.vars.set(name, value); }
     assign(name, value, line) {
       let e = this;
       while (e) { if (e.vars.has(name)) { e.vars.set(name, value); return; } e = e.parent; }
-      throw new LazError(`la variable « ${name} » n'existe pas (déclare-la avec : laz ${name} = ...)`, line);
+      throw new LazError(MODE_PYTHON.actif
+          ? `la variable « ${name} » n'existe pas (déclare-la d'abord avec : ${name} = ...)`
+          : `la variable « ${name} » n'existe pas (déclare-la avec : laz ${name} = ...)`, line);
     }
   }
 
@@ -1100,6 +1107,461 @@ const Lazarus = (function () {
 
   // ---------------- INTERPRÉTEUR ----------------
   const MAX_STEPS = 5000000;
+
+
+  // ============================================================
+  //  v11.0 : LE MODE PYTHON BIENVEILLANT (lecteur Python -> AST LAZARUS)
+  // ============================================================
+  const PY_MOTS = new Set(['def', 'return', 'if', 'elif', 'else', 'while', 'for', 'in',
+    'break', 'continue', 'pass', 'and', 'or', 'not', 'True', 'False', 'None',
+    'try', 'except', 'as', 'import', 'from']);
+  const PY_FONCTIONS = { print: 'vox', input: 'demand', len: 'taille', str: 'texte', float: 'nombre', int: '__ent', round: 'arondi', sorted: 'tri', abs: '__abs' };
+  const PY_METHODES = { append: 'ajoute', pop: 'retire', upper: 'majus', lower: 'minus', split: 'koupe', replace: 'remplace', join: 'colle' };
+  const PY_OPS2 = new Set(['**', '//', '==', '!=', '<=', '>=', '+=', '-=', '*=', '/=']);
+  const PY_MODE_RE = /#\s*langue\s*:\s*python/i;
+  const MODE_PYTHON = { actif: false };
+
+  function estModePython(source) {
+    return source.split('\n').slice(0, 3).some((l) => PY_MODE_RE.test(l));
+  }
+
+  function pyTokenize(source) {
+    const tokens = [];
+    const indents = [0];
+    const lignes = source.split('\n');
+    let profondeur = 0;
+    for (let num = 1; num <= lignes.length; num++) {
+      const brute = lignes[num - 1];
+      const depouillee = brute.trim();
+      if (profondeur === 0) {
+        if (depouillee === '' || depouillee.startsWith('#')) continue;
+        let larg = 0;
+        for (const c of brute) {
+          if (c === ' ') larg += 1;
+          else if (c === '\t') larg += 4;
+          else break;
+        }
+        if (larg > indents[indents.length - 1]) {
+          indents.push(larg);
+          tokens.push(['INDENT', null, num]);
+        }
+        while (larg < indents[indents.length - 1]) {
+          indents.pop();
+          tokens.push(['DEDENT', null, num]);
+        }
+        if (larg !== indents[indents.length - 1]) {
+          throw new LazError('indentation incohérente : aligne cette ligne avec le bloc auquel elle appartient', num);
+        }
+      }
+      let i = 0;
+      const n = brute.length;
+      while (i < n) {
+        let c = brute[i];
+        if (c === ' ' || c === '\t') { i++; continue; }
+        if (c === '#') break;
+        let estF = false;
+        if ((c === 'f' || c === 'F') && i + 1 < n && (brute[i + 1] === '"' || brute[i + 1] === "'")) {
+          estF = true;
+          i++;
+          c = brute[i];
+        }
+        if (c === '"' || c === "'") {
+          const quote = c;
+          i++;
+          let buf = '';
+          let ferme = false;
+          while (i < n) {
+            const ch = brute[i];
+            if (ch === '\\' && i + 1 < n) {
+              const nxt = brute[i + 1];
+              const esc = { n: '\n', t: '\t', '"': '"', "'": "'", '\\': '\\' };
+              buf += (esc[nxt] !== undefined ? esc[nxt] : nxt);
+              i += 2;
+              continue;
+            }
+            if (ch === quote) { ferme = true; i++; break; }
+            buf += ch;
+            i++;
+          }
+          if (!ferme) throw new LazError(`chaîne de caractères non fermée (il manque un ${quote} )`, num);
+          if (!estF) buf = buf.replace(/\{/g, '{{').replace(/\}/g, '}}');
+          tokens.push(['STRING', buf, num]);
+          continue;
+        }
+        if (isDigit(c) || (c === '.' && i + 1 < n && isDigit(brute[i + 1]))) {
+          const debut = i;
+          while (i < n && (isDigit(brute[i]) || brute[i] === '.')) i++;
+          tokens.push(['NUMBER', parseFloat(brute.slice(debut, i)), num]);
+          continue;
+        }
+        if (/[A-Za-z_]/.test(c)) {
+          const debut = i;
+          while (i < n && /[A-Za-z0-9_]/.test(brute[i])) i++;
+          const mot = brute.slice(debut, i);
+          tokens.push([PY_MOTS.has(mot) ? 'KW' : 'IDENT', mot, num]);
+          continue;
+        }
+        const deux = brute.slice(i, i + 2);
+        if (PY_OPS2.has(deux)) { tokens.push(['OP', deux, num]); i += 2; continue; }
+        if ('+-*/%=<>()[]{},:.'.includes(c)) {
+          if ('([{'.includes(c)) profondeur++;
+          else if (')]}'.includes(c)) profondeur = Math.max(0, profondeur - 1);
+          tokens.push(['OP', c, num]);
+          i++;
+          continue;
+        }
+        if (c === ';') throw new LazError('pas de point-virgule en Python — une instruction par ligne', num);
+        throw new LazError(`caractère inconnu : '${c}'`, num);
+      }
+      if (profondeur === 0 && tokens.length && !['NEWLINE', 'INDENT', 'DEDENT'].includes(tokens[tokens.length - 1][0])) {
+        tokens.push(['NEWLINE', null, num]);
+      }
+    }
+    while (indents.length > 1) {
+      indents.pop();
+      tokens.push(['DEDENT', null, lignes.length]);
+    }
+    tokens.push(['EOF', null, lignes.length]);
+    return tokens;
+  }
+
+  const PY_NICE = { NEWLINE: 'une fin de ligne', EOF: 'la fin du fichier', INDENT: 'une indentation', DEDENT: 'une fin de bloc' };
+
+  class PyParser {
+    constructor(tokens) {
+      this.tokens = tokens;
+      this.pos = 0;
+      this.scopes = [new Set()];
+    }
+    peek() { return this.tokens[this.pos]; }
+    next() { return this.tokens[this.pos++]; }
+    check(t, v) {
+      const tok = this.peek();
+      if (tok[0] !== t) return false;
+      if (v !== undefined && tok[1] !== v) return false;
+      return true;
+    }
+    accept(t, v) { if (this.check(t, v)) return this.next(); return null; }
+    expect(t, v, quoi) {
+      const tok = this.peek();
+      if (!this.check(t, v)) {
+        const attendu = quoi || v || t;
+        const trouve = tok[1] !== null ? tok[1] : (PY_NICE[tok[0]] || tok[0]);
+        throw new LazError(`j'attendais « ${attendu} » mais j'ai trouvé « ${trouve} »`, tok[2]);
+      }
+      return this.next();
+    }
+    sauteLignes() { while (this.check('NEWLINE')) this.next(); }
+
+    parseProgram() {
+      const stmts = [];
+      this.sauteLignes();
+      while (!this.check('EOF')) {
+        stmts.push(this.parseStatement());
+        this.sauteLignes();
+      }
+      return ['block', stmts];
+    }
+
+    parseBloc(line) {
+      this.expect('OP', ':', "les deux-points ':' à la fin de la ligne");
+      this.expect('NEWLINE', undefined, 'un passage à la ligne après les deux-points');
+      this.sauteLignes();
+      if (!this.check('INDENT')) {
+        throw new LazError('le bloc doit être indenté (décalé vers la droite, par exemple de 4 espaces)', this.peek()[2]);
+      }
+      this.next();
+      const stmts = [];
+      this.sauteLignes();
+      while (!this.check('DEDENT') && !this.check('EOF')) {
+        stmts.push(this.parseStatement());
+        this.sauteLignes();
+      }
+      this.accept('DEDENT');
+      return ['block', stmts];
+    }
+
+    declareOuAssigne(nom) {
+      const scope = this.scopes[this.scopes.length - 1];
+      if (scope.has(nom)) return 'assign';
+      scope.add(nom);
+      return 'declare';
+    }
+
+    parseStatement() {
+      const tok = this.peek();
+      const line = tok[2];
+
+      if (this.accept('KW', 'def')) {
+        const nom = this.expect('IDENT', undefined, 'un nom de fonction')[1];
+        this.expect('OP', '(', '(');
+        const params = [];
+        if (!this.check('OP', ')')) {
+          params.push(this.expect('IDENT', undefined, 'un nom de paramètre')[1]);
+          while (this.accept('OP', ',')) params.push(this.expect('IDENT', undefined, 'un nom de paramètre')[1]);
+        }
+        this.expect('OP', ')', ')');
+        this.scopes[this.scopes.length - 1].add(nom);
+        this.scopes.push(new Set(params));
+        const corps = this.parseBloc(line);
+        this.scopes.pop();
+        return ['fonk', nom, params, corps, line];
+      }
+
+      if (this.accept('KW', 'if')) return this.parseIf(line);
+
+      if (this.accept('KW', 'while')) {
+        const cond = this.parseExpression();
+        return ['tanke', cond, this.parseBloc(line), line];
+      }
+
+      if (this.accept('KW', 'for')) {
+        const v = this.expect('IDENT', undefined, 'un nom de variable')[1];
+        this.expect('KW', 'in', 'in');
+        const iterable = this.parseExpression();
+        this.scopes[this.scopes.length - 1].add(v);
+        return ['pou', v, iterable, this.parseBloc(line), line];
+      }
+
+      if (this.accept('KW', 'return')) {
+        if (this.check('NEWLINE')) return ['rend', null, line];
+        return ['rend', this.parseExpression(), line];
+      }
+      if (this.accept('KW', 'break')) return ['kase', line];
+      if (this.accept('KW', 'continue')) return ['swiv', line];
+      if (this.accept('KW', 'pass')) return ['expr', ['walu'], line];
+
+      if (this.accept('KW', 'try')) {
+        const corps = this.parseBloc(line);
+        this.sauteLignes();
+        this.expect('KW', 'except', 'except (après un try, il faut un except)');
+        let nomErreur = 'erreur';
+        if (this.check('IDENT')) {
+          this.next();
+          if (this.accept('KW', 'as')) nomErreur = this.expect('IDENT', undefined, "un nom pour l'erreur")[1];
+        }
+        this.scopes[this.scopes.length - 1].add(nomErreur);
+        const gestion = this.parseBloc(line);
+        return ['essaie', corps, nomErreur, gestion, line];
+      }
+
+      if (this.accept('KW', 'import')) {
+        const module = this.expect('IDENT', undefined, 'un nom de module')[1];
+        if (module !== 'random' && module !== 'math') {
+          throw new LazError(`le module « ${module} » n'est pas disponible dans le mode Python pédagogique (disponibles : random, math)`, line);
+        }
+        return ['expr', ['walu'], line];
+      }
+      if (this.accept('KW', 'from')) {
+        throw new LazError('« from ... import ... » n\'est pas disponible — utilise « import random » et random.randint(...)', line);
+      }
+
+      const expr = this.parseExpression();
+      const optok = this.peek();
+      if (optok[0] === 'OP' && ['=', '+=', '-=', '*=', '/='].includes(optok[1])) {
+        this.next();
+        let valeur = this.parseExpression();
+        if (optok[1] !== '=') valeur = ['binop', optok[1][0], expr, valeur, line];
+        if (expr[0] === 'var') {
+          const genre = this.declareOuAssigne(expr[1]);
+          return [genre, expr[1], valeur, line];
+        }
+        if (expr[0] === 'index') return ['assign_index', expr[1], expr[2], valeur, line];
+        throw new LazError("on ne peut affecter qu'une variable ou une case de liste/dictionnaire", line);
+      }
+      return ['expr', expr, line];
+    }
+
+    parseIf(line) {
+      const cond = this.parseExpression();
+      const corps = this.parseBloc(line);
+      let sinon = null;
+      const posSauv = this.pos;
+      this.sauteLignes();
+      if (this.accept('KW', 'elif')) {
+        const l2 = this.tokens[this.pos - 1][2];
+        sinon = ['block', [this.parseIf(l2)]];
+      } else if (this.accept('KW', 'else')) {
+        const l2 = this.tokens[this.pos - 1][2];
+        sinon = this.parseBloc(l2);
+      } else {
+        this.pos = posSauv;
+      }
+      return ['kan', cond, corps, sinon, line];
+    }
+
+    parseExpression() { return this.parseOr(); }
+    parseOr() {
+      let g = this.parseAnd();
+      while (this.check('KW', 'or')) {
+        const line = this.next()[2];
+        g = ['or', g, this.parseAnd(), line];
+      }
+      return g;
+    }
+    parseAnd() {
+      let g = this.parseNot();
+      while (this.check('KW', 'and')) {
+        const line = this.next()[2];
+        g = ['and', g, this.parseNot(), line];
+      }
+      return g;
+    }
+    parseNot() {
+      if (this.check('KW', 'not')) {
+        const line = this.next()[2];
+        return ['not', this.parseNot(), line];
+      }
+      return this.parseComparaison();
+    }
+    parseComparaison() {
+      let g = this.parseAddition();
+      while (this.peek()[0] === 'OP' && ['==', '!=', '<', '>', '<=', '>='].includes(this.peek()[1])) {
+        const op = this.next();
+        g = ['cmp', op[1], g, this.parseAddition(), op[2]];
+      }
+      return g;
+    }
+    parseAddition() {
+      let g = this.parseMultiplication();
+      while (this.peek()[0] === 'OP' && (this.peek()[1] === '+' || this.peek()[1] === '-')) {
+        const op = this.next();
+        g = ['binop', op[1], g, this.parseMultiplication(), op[2]];
+      }
+      return g;
+    }
+    parseMultiplication() {
+      let g = this.parseUnaire();
+      while (this.peek()[0] === 'OP' && ['*', '/', '//', '%'].includes(this.peek()[1])) {
+        const op = this.next();
+        g = ['binop', op[1], g, this.parseUnaire(), op[2]];
+      }
+      return g;
+    }
+    parseUnaire() {
+      if (this.check('OP', '-')) {
+        const line = this.next()[2];
+        return ['neg', this.parseUnaire(), line];
+      }
+      return this.parsePuissance();
+    }
+    parsePuissance() {
+      const base = this.parsePostfixe();
+      if (this.check('OP', '**')) {
+        const line = this.next()[2];
+        return ['binop', '**', base, this.parseUnaire(), line];
+      }
+      return base;
+    }
+    parsePostfixe() {
+      let expr = this.parsePrimaire();
+      for (;;) {
+        const tok = this.peek();
+        if (this.accept('OP', '(')) {
+          const args = [];
+          if (!this.check('OP', ')')) {
+            args.push(this.parseExpression());
+            while (this.accept('OP', ',')) args.push(this.parseExpression());
+          }
+          this.expect('OP', ')', ')');
+          expr = this.traduitAppel(expr, args, tok[2]);
+          continue;
+        }
+        if (this.accept('OP', '[')) {
+          const index = this.parseExpression();
+          this.expect('OP', ']', ']');
+          expr = ['index', expr, index, tok[2]];
+          continue;
+        }
+        if (this.accept('OP', '.')) {
+          const nom = this.expect('IDENT', undefined, 'un nom de méthode')[1];
+          expr = ['pymeth', expr, nom, tok[2]];
+          continue;
+        }
+        break;
+      }
+      if (expr[0] === 'pymeth') {
+        throw new LazError(`la méthode .${expr[2]} doit être appelée avec des parenthèses`, expr[3]);
+      }
+      return expr;
+    }
+    traduitAppel(callee, args, line) {
+      if (callee[0] === 'pymeth') {
+        const [, objet, nom, l2] = callee;
+        if (objet[0] === 'var' && objet[1] === 'random') {
+          if (nom === 'randint') return ['call', ['var', 'hasard', l2], args, line];
+          throw new LazError(`random.${nom} n'est pas disponible (disponible : random.randint(a, b))`, line);
+        }
+        if (objet[0] === 'var' && objet[1] === 'math') {
+          if (nom === 'sqrt') return ['binop', '**', args[0], ['num', 0.5], line];
+          throw new LazError(`math.${nom} n'est pas disponible (disponible : math.sqrt(x))`, line);
+        }
+        if (nom in PY_METHODES) {
+          if (nom === 'join') return ['call', ['var', 'colle', l2], [args[0], objet], line];
+          if (nom === 'pop') return ['call', ['var', 'retire', l2], [objet, args.length ? args[0] : ['num', -1]], line];
+          if (nom === 'split') return ['call', ['var', 'koupe', l2], [objet, args.length ? args[0] : ['str', ' ']], line];
+          return ['call', ['var', PY_METHODES[nom], l2], [objet, ...args], line];
+        }
+        const dispo = Object.keys(PY_METHODES).sort().join(', ');
+        throw new LazError(`la méthode .${nom} n'est pas disponible dans le mode Python pédagogique (disponibles : ${dispo})`, line);
+      }
+      if (callee[0] === 'var') {
+        const nom = callee[1];
+        if (nom === 'range') return ['call', ['var', '__plage', callee[2]], args, line];
+        if (nom in PY_FONCTIONS) return ['call', ['var', PY_FONCTIONS[nom], callee[2]], args, line];
+      }
+      return ['call', callee, args, line];
+    }
+    parsePrimaire() {
+      const tok = this.peek();
+      const line = tok[2];
+      if (tok[0] === 'NUMBER') { this.next(); return ['num', tok[1]]; }
+      if (tok[0] === 'STRING') { this.next(); return ['str', tok[1]]; }
+      if (this.accept('KW', 'True')) return ['bool', true];
+      if (this.accept('KW', 'False')) return ['bool', false];
+      if (this.accept('KW', 'None')) return ['walu'];
+      if (tok[0] === 'IDENT') { this.next(); return ['var', tok[1], line]; }
+      if (this.accept('OP', '(')) {
+        const e = this.parseExpression();
+        this.expect('OP', ')', ')');
+        return e;
+      }
+      if (this.accept('OP', '[')) {
+        const items = [];
+        if (!this.check('OP', ']')) {
+          items.push(this.parseExpression());
+          while (this.accept('OP', ',')) {
+            if (this.check('OP', ']')) break;
+            items.push(this.parseExpression());
+          }
+        }
+        this.expect('OP', ']', ']');
+        return ['list', items, line];
+      }
+      if (this.accept('OP', '{')) {
+        const paires = [];
+        if (!this.check('OP', '}')) {
+          let k = this.parseExpression();
+          this.expect('OP', ':', ':');
+          paires.push([k, this.parseExpression()]);
+          while (this.accept('OP', ',')) {
+            if (this.check('OP', '}')) break;
+            k = this.parseExpression();
+            this.expect('OP', ':', ':');
+            paires.push([k, this.parseExpression()]);
+          }
+        }
+        this.expect('OP', '}', '}');
+        return ['dict', paires, line];
+      }
+      const trouve = tok[1] !== null ? tok[1] : (PY_NICE[tok[0]] || tok[0]);
+      throw new LazError(`expression attendue, mais j'ai trouvé « ${trouve} »`, line);
+    }
+  }
+
+  function parsePython(source) {
+    return new PyParser(pyTokenize(source)).parseProgram();
+  }
 
   class Interpreter {
     constructor(io) {
@@ -1472,6 +1934,39 @@ const Lazarus = (function () {
         return '';
       });
 
+      // --- aides internes du mode Python (v11) ---
+      B('__plage', async (args, line) => {
+        self.need(args, 1, 'range', line);
+        const vals = args.map(a => Math.trunc(checkNumber(a, line, 'range()')));
+        let debut = 0, fin = 0, pas = 1;
+        if (vals.length === 1) { fin = vals[0]; }
+        else { debut = vals[0]; fin = vals[1]; if (vals.length > 2) pas = vals[2]; }
+        if (pas === 0) throw new LazError('range() : le pas ne peut pas être zéro', line);
+        const out = [];
+        if (pas > 0) { for (let v = debut; v < fin; v += pas) out.push(v); }
+        else { for (let v = debut; v > fin; v += pas) out.push(v); }
+        return out;
+      });
+      B('__ent', async (args, line) => {
+        self.need(args, 1, 'int', line);
+        const v = args[0];
+        if (v === true) return 1;
+        if (v === false) return 0;
+        if (typeof v === 'number') return Math.trunc(v);
+        if (typeof v === 'string') {
+          const f = parseFloat(v.trim().replace(',', '.'));
+          if (Number.isNaN(f) || !/^-?[\d.,]+$/.test(v.trim())) {
+            throw new LazError(`impossible de convertir « ${toText(v)} » en nombre entier`, line);
+          }
+          return Math.trunc(f);
+        }
+        throw new LazError('int() attend un nombre ou un texte', line);
+      });
+      B('__abs', async (args, line) => {
+        self.need(args, 1, 'abs', line);
+        return Math.abs(checkNumber(args[0], line, 'abs()'));
+      });
+
       // --- nouveautés v10.0 : LAZARUS QUANTIQUE ---
       // Simulateur à vecteur d'état complet (nombres complexes [re, im]).
       const etatQ = { n: 0, amp: [] };
@@ -1633,6 +2128,13 @@ const Lazarus = (function () {
     }
 
     async run(source) {
+      // v11 : le mode PYTHON BIENVEILLANT
+      if (estModePython(source)) {
+        MODE_PYTHON.actif = true;
+        const ast = parsePython(source);
+        return await this.execBlock(ast, this.globals);
+      }
+      MODE_PYTHON.actif = false;
       const langueMap = detecteLangue(source);
       const tokens = tokenize(source, langueMap);
       const ast = new Parser(tokens).parseProgram();
@@ -1904,6 +2406,13 @@ const Lazarus = (function () {
           // modulo « à la Python » : toujours du signe du diviseur
           return ((left % right) + right) % right;
         }
+        if (op === '//') {
+          if (right === 0) throw new LazError('division par zéro impossible', line);
+          return Math.floor(left / right);
+        }
+        if (op === '**') {
+          return Math.pow(left, right);
+        }
       }
       if (kind === 'index') {
         const [, targetNode, indexNode, line] = node;
@@ -2082,7 +2591,7 @@ const Lazarus = (function () {
     }
   }
 
-  return { run, toText, LazError, version: '10.0' };
+  return { run, toText, LazError, version: '11.0' };
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = Lazarus;
@@ -2569,6 +3078,41 @@ vox_couleur("Le hasard a disparu : c'est l'interference quantique.", "violet")
 
 vox("")
 vox("Tu viens de manipuler de VRAIS etats quantiques. En francais. Bravo.")
+`;
+  EX.python = `#langue: python
+# ===== v11.0 : LE PYTHON BIENVEILLANT =====
+# Du VRAI Python (niveau seconde) — mais avec les erreurs
+# expliquées en français et l'environnement qui pardonne.
+
+def moyenne(notes):
+    total = 0
+    for n in notes:
+        total += n
+    return total / len(notes)
+
+notes = [12, 15, 18]
+print("Moyenne :", round(moyenne(notes), 1))
+
+prenom = input("Ton prénom ? ")
+print(f"Salut {prenom} !")
+
+for i in range(1, 6):
+    print(i, "au carré :", i ** 2)
+
+compte = 3
+while compte > 0:
+    print("Décompte :", compte)
+    compte -= 1
+
+fruits = ["mangue", "banane"]
+fruits.append("ananas")
+print(len(fruits), "fruits, dont", fruits[-1].upper())
+
+import random
+print("Dé :", random.randint(1, 6))
+
+# Fais une faute exprès (efface un ':' ou écris "prenon")
+# et regarde l'erreur : elle est en FRANÇAIS et elle t'explique.
 `;
   EX.etoiles = `# ===== Pyramide d'étoiles =====
 laz hauteur = 7
@@ -3182,7 +3726,7 @@ vox("LAZARUS !")
     }
   });
 
-  addLine('Bienvenue dans LAZARUS v10.0 ⚛️ ! Nouveau : le mode QUANTIQUE (exemple ⚛️) — superposition, intrication, mesure... la vraie physique, en français. Et toujours : 🎓 L\'École pour apprendre.', 'sys');
+  addLine('Bienvenue dans LAZARUS v11.0 🐍 ! ÉNORME : le PYTHON BIENVEILLANT — écris du vrai Python, reçois des erreurs en français qui t\'expliquent (exemple 🐍). Et toujours : 🎓 L\'École, le quantique ⚛️, les jeux...', 'sys');
 })();
 </script>
 
