@@ -1,0 +1,35 @@
+# ===== v10.0 : LAZARUS QUANTIQUE ! =====
+# Un VRAI simulateur quantique — les mêmes lois physiques
+# que les ordinateurs d'IBM et Google, expliquées en français.
+
+vox_couleur("=== 1. LA PIECE QUANTIQUE ===", "or")
+vox("Un qubit n'est ni 0 ni 1 : il est LES DEUX a la fois...")
+qubits(1)
+superpose(0)
+vox("Etat du qubit :", probabilites())
+laz resultat = mesure(0)
+vox_couleur("Mesure ! La nature a choisi : {resultat}", "cyan")
+
+vox("")
+vox_couleur("=== 2. L'INTRICATION (la magie d'Einstein) ===", "or")
+vox("Deux qubits lies : mesurer l'un decide INSTANTANEMENT l'autre.")
+qubits(2)
+superpose(0)
+intrique(0, 1)
+vox("Etat de Bell :", probabilites())
+laz a = mesure(0)
+laz b = mesure(1)
+vox_couleur("Qubit A : {a}   Qubit B : {b}   -> toujours identiques !", "vert")
+
+vox("")
+vox_couleur("=== 3. L'INTERFERENCE ===", "or")
+vox("Superposer deux fois avec un dephasage : les chemins s'annulent...")
+qubits(1)
+superpose(0)
+porte_z(0)
+superpose(0)
+vox("Probabilites :", probabilites())
+vox_couleur("Le hasard a disparu : c'est l'interference quantique.", "violet")
+
+vox("")
+vox("Tu viens de manipuler de VRAIS etats quantiques. En francais. Bravo.")

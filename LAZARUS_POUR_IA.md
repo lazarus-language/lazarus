@@ -1,7 +1,7 @@
 # LAZARUS_POUR_IA.md — Spécification du langage LAZARUS pour agents IA
 
 > **Instruction pour l'agent IA qui lit ce fichier :** ce document contient la
-> spécification complète et exacte du langage de programmation LAZARUS (v9.0),
+> spécification complète et exacte du langage de programmation LAZARUS (v10.0),
 > créé par Ladji Doucaré. Après lecture, tu sais écrire du code LAZARUS correct.
 > Respecte STRICTEMENT cette syntaxe — n'invente jamais de mots-clés ou de
 > fonctions absents de ce document. En cas de doute, préfère les constructions
@@ -80,7 +80,7 @@ rex.nom = "Rexou"                # accès/écriture direct des propriétés
 
 Pas de `super`, pas de méthodes statiques, pas d'attributs de classe.
 
-## 5. Les 49 fonctions intégrées (signatures exactes)
+## 5. Les 56 fonctions intégrées (signatures exactes)
 
 E/S : `vox(a, b, ...)` affiche (sépare par espaces) · `demand(prompt)` → texte saisi (TOUJOURS convertir avec `nombre()` pour du calcul) · `vox_couleur(texte..., couleur)` dernier argument = couleur parmi rouge, vert, jaune, bleu, violet, cyan, blanc, or, gris, rose, noir · `stylise(texte, style)` → texte stylé (couleurs + "gras", "souligne") · `efface_ecran()` · `ralenti(sec)` exécution pas-à-pas visible (0 = normal, max 3 ; ignoré en mode traduit) · `echoue(message)` lève une erreur rattrapable.
 
@@ -99,6 +99,8 @@ Fichiers (Python : disque réel ; playground : fichiers virtuels de session) : `
 Dessin (playground : toile visible en direct ; Python : buffer puis `sauve_dessin` → fichier SVG) : `toile(largeur, hauteur)` OBLIGATOIRE avant tout dessin · `fond(couleur)` · `trace_ligne(x1, y1, x2, y2, couleur)` · `trace_rect(x, y, l, h, couleur)` · `rect_plein(...)` · `trace_cercle(x, y, rayon, couleur)` · `cercle_plein(...)` · `trace_texte(x, y, texte, couleur)` · `sauve_dessin(chemin)`. Origine (0,0) en haut à gauche, y vers le bas. Couleurs : noms français ci-dessus ou `"#rrggbb"`.
 
 Mode JEU temps réel (v6 ; playground : toile animée + sons ; Python : vraie fenêtre tkinter) : `chaque_image(f)` enregistre la fonction `f` (SANS parenthèses : `chaque_image(image)`, pas `chaque_image(image())`) appelée ~30 fois/seconde APRÈS la fin du programme principal · `touche_pressee(nom)` → vrai/faux, la touche est-elle enfoncée maintenant (noms : `"a"`-`"z"`, `"0"`-`"9"`, `"haut"`, `"bas"`, `"gauche"`, `"droite"`, `"espace"`, `"entree"`, `"echap"`) · `arrete_jeu()` termine la boucle de jeu · `joue_son(nom)` parmi piece, saut, explosion, clic, moteur, victoire, defaite · `dis(texte...)` (v8) prononce le texte à voix haute en français (synthèse vocale ; silencieux si indisponible) · `ecoute(prompt?)` (v9) → TEXTE reconnu au micro (playground ; repli clavier sinon).
+
+Mode QUANTIQUE (v10 ; simulateur à vecteur d'état, physique exacte) : `qubits(n)` crée le registre (1-10 qubits, état |00...0⟩) · `superpose(q)` porte Hadamard · `porte_x(q)` inverseur · `porte_z(q)` déphaseur · `intrique(controle, cible)` porte CNOT · `mesure(q)` → 0 ou 1 (probabiliste, effondre l'état) · `probabilites()` → dico { "état binaire": probabilité } des états non nuls. Exemple état de Bell : `qubits(2)` `superpose(0)` `intrique(0, 1)` → probabilites() = { "00": 0.5, "11": 0.5 }, et les deux mesures sont toujours corrélées.
 
 Mode INTERFACE (v7 ; playground : widgets au-dessus de la console ; Python : fenêtre tkinter) : `titre(texte)` grand titre · `etiquette(texte)` → id (garder dans une variable pour `change_texte`) · `bouton(texte, f)` bouton cliquable, `f` SANS parenthèses, appelée à chaque clic · `champ(indication)` → id, zone de saisie · `valeur_de(id)` → TEXTE saisi (convertir avec `nombre()` pour calculer) · `change_texte(id, texte)` met à jour n'importe quel widget · `efface_interface()`. L'application reste vivante après le programme principal (elle attend les clics) ; `arrete_jeu()` la ferme. Compatible avec `garde`, `joue_son`, la toile et `chaque_image`.
 
@@ -229,5 +231,5 @@ sauve_dessin("art.svg")
 ```
 
 ---
-*LAZARUS v9.0 — langage open source (MIT) créé par Ladji Doucaré.
+*LAZARUS v10.0 — langage open source (MIT) créé par Ladji Doucaré.
 Guide humain : GUIDE_LAZARUS.md · Source : github.com/lazarus-language/lazarus*

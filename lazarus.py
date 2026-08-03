@@ -1062,6 +1062,112 @@ def make_builtins(env, interp=None):
             reponse = ''
         return reponse
 
+    # --- nouveautés v10.0 : LAZARUS QUANTIQUE ! ---
+    # Un vrai simulateur quantique pédagogique : vecteur d'état complet,
+    # portes H/X/Z/CNOT, mesure avec effondrement. Jusqu'à 10 qubits.
+    etat_q = {'n': 0, 'amp': []}
+
+    def _quantique_requis(line):
+        if etat_q['n'] == 0:
+            raise LazError("appelle d'abord qubits(n) pour créer ton registre quantique", line)
+
+    def _bit(idx, q):
+        return (idx >> (etat_q['n'] - 1 - q)) & 1
+
+    def _verifie_qubit(v, line, nom):
+        q = check_number(v, line, nom)
+        q = int(q)
+        if q < 0 or q >= etat_q['n']:
+            raise LazError(f"{nom} : le qubit {q} n'existe pas (registre de {etat_q['n']} qubits, numérotés de 0 à {etat_q['n'] - 1})", line)
+        return q
+
+    def b_qubits(args, line):
+        _need(args, 1, 'qubits', line)
+        n = int(check_number(args[0], line, 'qubits()'))
+        if n < 1 or n > 10:
+            raise LazError('qubits() : entre 1 et 10 qubits (chaque qubit DOUBLE la mémoire du simulateur !)', line)
+        etat_q['n'] = n
+        etat_q['amp'] = [0j] * (2 ** n)
+        etat_q['amp'][0] = 1 + 0j
+        return None
+
+    def _porte_1q(q, m00, m01, m10, m11):
+        amp = etat_q['amp']
+        pas = 2 ** (etat_q['n'] - 1 - q)
+        for i in range(len(amp)):
+            if (i // pas) % 2 == 0:
+                j = i + pas
+                a0, a1 = amp[i], amp[j]
+                amp[i] = m00 * a0 + m01 * a1
+                amp[j] = m10 * a0 + m11 * a1
+
+    def b_superpose(args, line):
+        _need(args, 1, 'superpose', line)
+        _quantique_requis(line)
+        q = _verifie_qubit(args[0], line, 'superpose()')
+        r = 1 / (2 ** 0.5)
+        _porte_1q(q, r, r, r, -r)
+        return None
+
+    def b_porte_x(args, line):
+        _need(args, 1, 'porte_x', line)
+        _quantique_requis(line)
+        q = _verifie_qubit(args[0], line, 'porte_x()')
+        _porte_1q(q, 0, 1, 1, 0)
+        return None
+
+    def b_porte_z(args, line):
+        _need(args, 1, 'porte_z', line)
+        _quantique_requis(line)
+        q = _verifie_qubit(args[0], line, 'porte_z()')
+        _porte_1q(q, 1, 0, 0, -1)
+        return None
+
+    def b_intrique(args, line):
+        _need(args, 2, 'intrique', line)
+        _quantique_requis(line)
+        c = _verifie_qubit(args[0], line, 'intrique()')
+        t = _verifie_qubit(args[1], line, 'intrique()')
+        if c == t:
+            raise LazError("intrique() : le qubit de contrôle et la cible doivent être différents", line)
+        amp = etat_q['amp']
+        pas = 2 ** (etat_q['n'] - 1 - t)
+        for i in range(len(amp)):
+            if _bit(i, c) == 1 and _bit(i, t) == 0:
+                j = i + pas
+                amp[i], amp[j] = amp[j], amp[i]
+        return None
+
+    def b_mesure(args, line):
+        _need(args, 1, 'mesure', line)
+        _quantique_requis(line)
+        q = _verifie_qubit(args[0], line, 'mesure()')
+        amp = etat_q['amp']
+        p1 = sum(abs(a) ** 2 for i, a in enumerate(amp) if _bit(i, q) == 1)
+        resultat = 1 if random.random() < p1 else 0
+        norme = 0.0
+        for i in range(len(amp)):
+            if _bit(i, q) != resultat:
+                amp[i] = 0j
+            else:
+                norme += abs(amp[i]) ** 2
+        if norme > 0:
+            norme = norme ** 0.5
+            for i in range(len(amp)):
+                amp[i] = amp[i] / norme
+        return resultat
+
+    def b_probabilites(args, line):
+        _quantique_requis(line)
+        n = etat_q['n']
+        d = {}
+        for i, a in enumerate(etat_q['amp']):
+            p = abs(a) ** 2
+            if p > 1e-9:
+                cle = format(i, '0' + str(n) + 'b')
+                d[cle] = round(p, 4)
+        return d
+
     # --- nouveautés v7.0 : le MODE INTERFACE ! ---
     # titre / etiquette / bouton / champ construisent une vraie application.
     # Playground : widgets HTML au-dessus de la console.
@@ -1314,6 +1420,14 @@ def make_builtins(env, interp=None):
         'joue_son': b_joue_son,             # jouer un petit son (piece, saut, explosion...)
         'dis': b_dis,                       # v8 : LAZARUS parle à voix haute !
         'ecoute': b_ecoute,                 # v9 : LAZARUS écoute ta voix (playground)
+        # --- nouveautés v10.0 : le mode QUANTIQUE ---
+        'qubits': b_qubits,                 # créer le registre quantique (1 à 10 qubits)
+        'superpose': b_superpose,           # porte Hadamard : superposition !
+        'porte_x': b_porte_x,               # porte X : l'inverseur
+        'porte_z': b_porte_z,               # porte Z : le déphaseur
+        'intrique': b_intrique,             # porte CNOT : l'intrication !
+        'mesure': b_mesure,                 # mesurer un qubit (effondrement)
+        'probabilites': b_probabilites,     # les probabilités de chaque état
         # --- nouveautés v7.0 : le mode interface ---
         'titre': b_titre,                   # grand titre de l'application
         'etiquette': b_etiquette,           # texte affiché (renvoie son id)

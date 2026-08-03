@@ -690,6 +690,29 @@ Un programme avec lequel on PARLE — sans clavier. Sur ordinateur, `ecoute()`
 bascule sur le clavier (le micro arrive) ; dans le playground, c'est la vraie
 reconnaissance vocale du navigateur.
 
+## 30. LAZARUS QUANTIQUE ⚛️ *(v10)*
+
+Le futur de l'informatique est quantique — et LAZARUS est le premier langage
+éducatif francophone qui vous y emmène. Son simulateur applique les VRAIES
+lois de la mécanique quantique (vecteur d'état, portes, effondrement) :
+
+```lazarus
+qubits(2)              # un registre de 2 qubits
+superpose(0)           # le qubit 0 est 0 ET 1 à la fois (porte Hadamard)
+intrique(0, 1)         # les deux qubits sont liés (porte CNOT)
+vox(probabilites())    # { "00": 0.5, "11": 0.5 } — l'état de Bell !
+laz a = mesure(0)      # la nature choisit...
+laz b = mesure(1)      # ... et b est TOUJOURS égal à a. L'intrication.
+```
+
+Les 7 fonctions : `qubits(n)` (1 à 10), `superpose(q)`, `porte_x(q)`,
+`porte_z(q)`, `intrique(controle, cible)`, `mesure(q)` → 0/1,
+`probabilites()` → dictionnaire des états possibles.
+
+C'est un simulateur — le même outil qu'utilisent les étudiants et les
+ingénieurs pour apprendre, avant de toucher aux vraies machines d'IBM.
+La superposition, l'intrication, l'interférence : tout y est, en français.
+
 ---
 
-*LAZARUS v9.0 — créé par Ladji. L'école dans la poche, et il écoute.*
+*LAZARUS v10.0 — créé par Ladji. Même le quantique parle français.*

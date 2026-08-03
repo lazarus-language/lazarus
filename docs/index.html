@@ -328,7 +328,7 @@
 <header>
   <div class="logo">LAZARUS</div>
   <div class="tagline">Le langage de programmation créé par <b>Ladji</b> — accolades comme Java, simplicité de Python, mots-clés uniques.</div>
-  <div class="version">v9.0</div>
+  <div class="version">v10.0</div>
 </header>
 
 <div class="toolbar">
@@ -352,6 +352,7 @@
     <option value="v7app">🖥️ v7.0 : MODE INTERFACE — Ta première appli !</option>
     <option value="francais">🇫🇷 v7.1 : le pack français académique (#langue:)</option>
     <option value="parle">🗣️ v8.0 : LAZARUS PARLE — la voix !</option>
+    <option value="quantique">⚛️ v10.0 : LAZARUS QUANTIQUE !</option>
   </select>
   <button id="btnClear">🗑 Effacer la console</button>
   <button id="btnShare">🔗 Partager</button>
@@ -481,6 +482,8 @@ ralenti(0.5) · #langue: anglais/francais
 v6.0 : chaque_image(ma_fonk)
 touche_pressee("droite") arrete_jeu()
 joue_son("piece") · 30 images/s
+v10 : qubits superpose intrique
+mesure probabilites → QUANTIQUE !
 v8.0 : dis("texte") → il PARLE !
 🔗 Partager → ton code en lien
 v7.0 : titre bouton champ etiquette
@@ -492,7 +495,7 @@ efface_interface() → des APPLIS !
 </details>
 
 <footer>
-  <b>LAZARUS v9.0</b> — créé par Ladji · Un langage libre et gratuit, pour tout le monde · <a href="https://github.com/lazarus-language/lazarus" style="color:#f0b429">GitHub</a> · pip install lazarus-lang
+  <b>LAZARUS v10.0</b> — créé par Ladji · Un langage libre et gratuit, pour tout le monde · <a href="https://github.com/lazarus-language/lazarus" style="color:#f0b429">GitHub</a> · pip install lazarus-lang
 </footer>
 
 <script>
@@ -1469,6 +1472,108 @@ const Lazarus = (function () {
         return '';
       });
 
+      // --- nouveautés v10.0 : LAZARUS QUANTIQUE ---
+      // Simulateur à vecteur d'état complet (nombres complexes [re, im]).
+      const etatQ = { n: 0, amp: [] };
+      const qRequis = (line) => {
+        if (etatQ.n === 0) throw new LazError('appelle d\'abord qubits(n) pour créer ton registre quantique', line);
+      };
+      const qBit = (idx, q) => (idx >> (etatQ.n - 1 - q)) & 1;
+      const qVerifie = (v, line, nom) => {
+        const q = Math.floor(checkNumber(v, line, nom));
+        if (q < 0 || q >= etatQ.n) throw new LazError(`${nom} : le qubit ${q} n'existe pas (registre de ${etatQ.n} qubits, numérotés de 0 à ${etatQ.n - 1})`, line);
+        return q;
+      };
+      const porte1q = (q, m00, m01, m10, m11) => {
+        const amp = etatQ.amp;
+        const pas = 2 ** (etatQ.n - 1 - q);
+        for (let i = 0; i < amp.length; i++) {
+          if (Math.floor(i / pas) % 2 === 0) {
+            const jdx = i + pas;
+            const a0 = amp[i], a1 = amp[jdx];
+            amp[i] = [m00 * a0[0] + m01 * a1[0], m00 * a0[1] + m01 * a1[1]];
+            amp[jdx] = [m10 * a0[0] + m11 * a1[0], m10 * a0[1] + m11 * a1[1]];
+          }
+        }
+      };
+      B('qubits', async (args, line) => {
+        self.need(args, 1, 'qubits', line);
+        const n = Math.floor(checkNumber(args[0], line, 'qubits()'));
+        if (n < 1 || n > 10) throw new LazError('qubits() : entre 1 et 10 qubits (chaque qubit DOUBLE la mémoire du simulateur !)', line);
+        etatQ.n = n;
+        etatQ.amp = Array.from({ length: 2 ** n }, () => [0, 0]);
+        etatQ.amp[0] = [1, 0];
+        return null;
+      });
+      B('superpose', async (args, line) => {
+        self.need(args, 1, 'superpose', line);
+        qRequis(line);
+        const q = qVerifie(args[0], line, 'superpose()');
+        const r = 1 / Math.sqrt(2);
+        porte1q(q, r, r, r, -r);
+        return null;
+      });
+      B('porte_x', async (args, line) => {
+        self.need(args, 1, 'porte_x', line);
+        qRequis(line);
+        porte1q(qVerifie(args[0], line, 'porte_x()'), 0, 1, 1, 0);
+        return null;
+      });
+      B('porte_z', async (args, line) => {
+        self.need(args, 1, 'porte_z', line);
+        qRequis(line);
+        porte1q(qVerifie(args[0], line, 'porte_z()'), 1, 0, 0, -1);
+        return null;
+      });
+      B('intrique', async (args, line) => {
+        self.need(args, 2, 'intrique', line);
+        qRequis(line);
+        const c = qVerifie(args[0], line, 'intrique()');
+        const t = qVerifie(args[1], line, 'intrique()');
+        if (c === t) throw new LazError('intrique() : le qubit de contrôle et la cible doivent être différents', line);
+        const amp = etatQ.amp;
+        const pas = 2 ** (etatQ.n - 1 - t);
+        for (let i = 0; i < amp.length; i++) {
+          if (qBit(i, c) === 1 && qBit(i, t) === 0) {
+            const jdx = i + pas;
+            const tmp = amp[i];
+            amp[i] = amp[jdx];
+            amp[jdx] = tmp;
+          }
+        }
+        return null;
+      });
+      B('mesure', async (args, line) => {
+        self.need(args, 1, 'mesure', line);
+        qRequis(line);
+        const q = qVerifie(args[0], line, 'mesure()');
+        const amp = etatQ.amp;
+        let p1 = 0;
+        for (let i = 0; i < amp.length; i++) {
+          if (qBit(i, q) === 1) p1 += amp[i][0] ** 2 + amp[i][1] ** 2;
+        }
+        const resultat = Math.random() < p1 ? 1 : 0;
+        let norme = 0;
+        for (let i = 0; i < amp.length; i++) {
+          if (qBit(i, q) !== resultat) amp[i] = [0, 0];
+          else norme += amp[i][0] ** 2 + amp[i][1] ** 2;
+        }
+        if (norme > 0) {
+          norme = Math.sqrt(norme);
+          for (let i = 0; i < amp.length; i++) amp[i] = [amp[i][0] / norme, amp[i][1] / norme];
+        }
+        return resultat;
+      });
+      B('probabilites', async (args, line) => {
+        qRequis(line);
+        const d = new Map();
+        for (let i = 0; i < etatQ.amp.length; i++) {
+          const p = etatQ.amp[i][0] ** 2 + etatQ.amp[i][1] ** 2;
+          if (p > 1e-9) d.set(i.toString(2).padStart(etatQ.n, '0'), Math.round(p * 10000) / 10000);
+        }
+        return d;
+      });
+
       // --- nouveautés v7.0 : le MODE INTERFACE ---
       const widget = (cmd) => { if (self.io.onWidget) self.io.onWidget(cmd); };
       const nouvelId = (prefixe) => { self.compteurWidget++; return prefixe + '_' + self.compteurWidget; };
@@ -1977,7 +2082,7 @@ const Lazarus = (function () {
     }
   }
 
-  return { run, toText, LazError, version: '9.0' };
+  return { run, toText, LazError, version: '10.0' };
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = Lazarus;
@@ -2428,6 +2533,42 @@ pou i dan 1..3 {
     vox("Décompte :", i)
 }
 dis("3, 2, 1... c'est parti !")
+`;
+  EX.quantique = `# ===== v10.0 : LAZARUS QUANTIQUE ! =====
+# Un VRAI simulateur quantique — les mêmes lois physiques
+# que les ordinateurs d'IBM et Google, expliquées en français.
+
+vox_couleur("=== 1. LA PIECE QUANTIQUE ===", "or")
+vox("Un qubit n'est ni 0 ni 1 : il est LES DEUX a la fois...")
+qubits(1)
+superpose(0)
+vox("Etat du qubit :", probabilites())
+laz resultat = mesure(0)
+vox_couleur("Mesure ! La nature a choisi : {resultat}", "cyan")
+
+vox("")
+vox_couleur("=== 2. L'INTRICATION (la magie d'Einstein) ===", "or")
+vox("Deux qubits lies : mesurer l'un decide INSTANTANEMENT l'autre.")
+qubits(2)
+superpose(0)
+intrique(0, 1)
+vox("Etat de Bell :", probabilites())
+laz a = mesure(0)
+laz b = mesure(1)
+vox_couleur("Qubit A : {a}   Qubit B : {b}   -> toujours identiques !", "vert")
+
+vox("")
+vox_couleur("=== 3. L'INTERFERENCE ===", "or")
+vox("Superposer deux fois avec un dephasage : les chemins s'annulent...")
+qubits(1)
+superpose(0)
+porte_z(0)
+superpose(0)
+vox("Probabilites :", probabilites())
+vox_couleur("Le hasard a disparu : c'est l'interference quantique.", "violet")
+
+vox("")
+vox("Tu viens de manipuler de VRAIS etats quantiques. En francais. Bravo.")
 `;
   EX.etoiles = `# ===== Pyramide d'étoiles =====
 laz hauteur = 7
@@ -3041,7 +3182,7 @@ vox("LAZARUS !")
     }
   });
 
-  addLine('Bienvenue dans LAZARUS v9.0 ! ÉNORME : clique sur 🎓 L\'École — 12 leçons pour apprendre à coder, directement ici. Et ton programme peut t\'écouter : ecoute() !', 'sys');
+  addLine('Bienvenue dans LAZARUS v10.0 ⚛️ ! Nouveau : le mode QUANTIQUE (exemple ⚛️) — superposition, intrication, mesure... la vraie physique, en français. Et toujours : 🎓 L\'École pour apprendre.', 'sys');
 })();
 </script>
 
