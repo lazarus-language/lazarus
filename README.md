@@ -63,6 +63,14 @@ n'importe quelle page. Voir le dossier [`react/`](react/).
 
 Voir le dossier [`mcp/`](mcp/). Demandez à votre IA : *« code-moi un jeu en LAZARUS et teste-le »* — elle écrit, exécute, corrige, et livre un programme vérifié.
 
+## 📚 Le livre officiel
+
+**« Apprends à coder de zéro avec LAZARUS »** — 14 chapitres progressifs, des exercices corrigés et 3 projets complets, écrit par le créateur du langage.
+
+- 📖 **Kindle** : [amazon.fr](https://www.amazon.fr/dp/B0HCRLYQ4R) · [amazon.com](https://www.amazon.com/dp/B0HCRLYQ4R)
+- 📄 **PDF direct** (mises à jour à vie incluses) : [ladjidoucare.gumroad.com/l/lazarus](https://ladjidoucare.gumroad.com/l/lazarus)
+- 🎓 Et toujours **gratuit** : l'École intégrée du playground (12 leçons) et le [guide complet](GUIDE_LAZARUS.md)
+
 ## 📖 Le langage en 30 secondes
 
 | LAZARUS | Signification |
