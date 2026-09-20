@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://lazarus-language.github.io/lazarus/sitemap.xml
